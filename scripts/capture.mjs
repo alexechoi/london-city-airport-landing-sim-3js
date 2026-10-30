@@ -1,11 +1,17 @@
 import { chromium } from "playwright";
-import { mkdir, copyFile, rm } from "node:fs/promises";
+import { mkdir, copyFile, rm, readdir } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 const duration = 20,
   fps = 24,
   frames = duration * fps;
-await rm("work/frames", { recursive: true, force: true });
+if (!process.env.CAPTURE_RESUME)
+  await rm("work/frames", { recursive: true, force: true });
 await mkdir("work/frames", { recursive: true });
+const saved = new Set(await readdir("work/frames"));
+let firstFrame = 0;
+if (process.env.CAPTURE_RESUME)
+  while (firstFrame < frames && saved.has(String(firstFrame).padStart(5, "0") + ".jpg")) firstFrame++;
+console.log(`Capturing from frame ${firstFrame}/${frames}`);
 await mkdir("public/screenshots", { recursive: true });
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || "/usr/bin/chromium",
@@ -65,7 +71,7 @@ await page.evaluate(() => {
 await page.screenshot({ path: "public/screenshots/one-canada-square.png" });
 await page.evaluate(() => sim.start("demo"));
 if (errors.length) throw new Error(errors.join("\n"));
-for (let i = 0; i < frames; i++) {
+for (let i = firstFrame; i < frames; i++) {
   await page.evaluate(
     (t) => sim.renderAt(t),
     [0, 10, 25, 30][Math.min(3, Math.floor(i / (fps * 5)))] +

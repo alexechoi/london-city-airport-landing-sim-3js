@@ -44,7 +44,7 @@ npm run dev
 node scripts/capture.mjs
 ```
 
-Install Chromium and ffmpeg, or set `CHROMIUM_PATH`. Captures go into `work/`, which is gitignored. `node scripts/check-browser.mjs` runs the browser checks.
+Install Chromium and ffmpeg, or set `CHROMIUM_PATH`. Captures go into `work/`, which is gitignored. If a recording is interrupted, `CAPTURE_RESUME=1` resumes at the first missing frame; use this only with the same scene revision and capture settings. `node scripts/check-browser.mjs` runs the browser checks.
 
 ## Rendering
 
