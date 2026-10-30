@@ -1,0 +1,5 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {initialFlight,stepFlight,landingVerdict} from '../src/flight.js';
+test('stable 5.5 degree final follows reference approach',()=>{const s=initialFlight();for(let i=0;i<1200;i++)stepFlight(s,{},1/60);assert.ok(s.z<1800&&s.z>1600);assert.ok(Math.abs(s.y-(s.z*Math.tan(5.5*Math.PI/180)))<8);});
+test('only safe on-runway touchdown earns a score',()=>{const s={...initialFlight(),z:-250,y:4.5,x:1,vs:-1,pitch:0};assert.equal(landingVerdict(s).safe,true);for(const change of [{x:16},{z:1},{z:-1510},{vs:-6},{speed:170},{bank:20}])assert.equal(landingVerdict({...s,...change}).safe,false);});
+test('braking stops aircraft within runway',()=>{const s={...initialFlight(),ground:true,z:-250,y:4.5};for(let i=0;i<900;i++)stepFlight(s,{' ':true},1/60);assert.equal(s.speed,0);assert.ok(s.z> -1508);});
+test('throttle and pitch clamp and banking turns left',()=>{const s=initialFlight();for(let i=0;i<600;i++)stepFlight(s,{w:true,ArrowLeft:true,ArrowDown:true},1/60);assert.ok(s.throttle<=1);assert.ok(s.pitch<=12);assert.ok(s.x<0);});
