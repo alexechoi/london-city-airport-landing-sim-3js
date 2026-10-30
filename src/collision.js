@@ -1,2 +1,56 @@
 // Spatial broad phase plus swept-volume test prevents tunnelling through buildings.
-export function collisionIndex(buildings){const cells=new Map(),size=150;for(const b of buildings)for(let x=Math.floor(b.minX/size);x<=Math.floor(b.maxX/size);x++)for(let z=Math.floor(b.minZ/size);z<=Math.floor(b.maxZ/size);z++){const key=x+','+z;if(!cells.has(key))cells.set(key,[]);cells.get(key).push(b);}return {hit(a,p){const found=new Set();for(let x=Math.floor((Math.min(a.x,p.x)-14)/size);x<=Math.floor((Math.max(a.x,p.x)+14)/size);x++)for(let z=Math.floor((Math.min(a.z,p.z)-18)/size);z<=Math.floor((Math.max(a.z,p.z)+18)/size);z++)for(const b of cells.get(x+','+z)||[])found.add(b);for(const b of found){let lo=0,hi=1;for(const [axis,min,max] of [['x',b.minX-4,b.maxX+4],['y',-3,b.h+3],['z',b.minZ-14,b.maxZ+14]]){const delta=p[axis]-a[axis];if(Math.abs(delta)<1e-8){if(a[axis]<min||a[axis]>max){hi=-1;break;}}else{const t0=(min-a[axis])/delta,t1=(max-a[axis])/delta;lo=Math.max(lo,Math.min(t0,t1));hi=Math.min(hi,Math.max(t0,t1));}}if(lo<=hi)return b;}return null;}};}
+export function collisionIndex(buildings) {
+  const cells = new Map(),
+    size = 150;
+  for (const b of buildings)
+    for (let x = Math.floor(b.minX / size); x <= Math.floor(b.maxX / size); x++)
+      for (
+        let z = Math.floor(b.minZ / size);
+        z <= Math.floor(b.maxZ / size);
+        z++
+      ) {
+        const key = x + "," + z;
+        if (!cells.has(key)) cells.set(key, []);
+        cells.get(key).push(b);
+      }
+  return {
+    hit(a, p) {
+      const found = new Set();
+      for (
+        let x = Math.floor((Math.min(a.x, p.x) - 14) / size);
+        x <= Math.floor((Math.max(a.x, p.x) + 14) / size);
+        x++
+      )
+        for (
+          let z = Math.floor((Math.min(a.z, p.z) - 18) / size);
+          z <= Math.floor((Math.max(a.z, p.z) + 18) / size);
+          z++
+        )
+          for (const b of cells.get(x + "," + z) || []) found.add(b);
+      for (const b of found) {
+        let lo = 0,
+          hi = 1;
+        for (const [axis, min, max] of [
+          ["x", b.minX - 14, b.maxX + 14],
+          ["y", -3, b.h + 3],
+          ["z", b.minZ - 14, b.maxZ + 14],
+        ]) {
+          const delta = p[axis] - a[axis];
+          if (Math.abs(delta) < 1e-8) {
+            if (a[axis] < min || a[axis] > max) {
+              hi = -1;
+              break;
+            }
+          } else {
+            const t0 = (min - a[axis]) / delta,
+              t1 = (max - a[axis]) / delta;
+            lo = Math.max(lo, Math.min(t0, t1));
+            hi = Math.min(hi, Math.max(t0, t1));
+          }
+        }
+        if (lo <= hi) return b;
+      }
+      return null;
+    },
+  };
+}

@@ -15,7 +15,7 @@ export function addCity(scene, data, materials, roofMaterial) {
     const [height, poly, type] = data.buildings[index];
     if (poly.length < 4) continue;
     const h = Math.min(310, height),
-      b = batches[height>45?0:1+index % (materials.length-1)];
+      b = batches[height > 45 ? 0 : 1 + (index % (materials.length - 1))];
     const points = poly.slice(0, -1);
     let minX = Infinity,
       maxX = -Infinity,
@@ -103,13 +103,13 @@ export function addCity(scene, data, materials, roofMaterial) {
   rg.setAttribute("position", new T.Float32BufferAttribute(p, 3));
   rg.computeVertexNormals();
   const roadMesh = new T.Mesh(
-      rg,
-      new T.MeshStandardMaterial({
-        color: 0x5d605e,
-        roughness: 0.95,
-        side: T.DoubleSide,
-      }),
-    );
+    rg,
+    new T.MeshStandardMaterial({
+      color: 0x5d605e,
+      roughness: 0.95,
+      side: T.DoubleSide,
+    }),
+  );
   // Satellite ground already contains the street network; avoid overlapping ribbons.
   return colliders;
 }

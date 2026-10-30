@@ -60,7 +60,12 @@ sunlight.shadow.bias = -0.0003;
 sunlight.target.position.set(0, 0, -750);
 scene.add(sunlight.target);
 scene.add(sunlight);
-const environmentScene=new T.Scene();environmentScene.add(sky.clone());const pmrem=new T.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(environmentScene,.04).texture;scene.environmentIntensity=.035;pmrem.dispose();
+const environmentScene = new T.Scene();
+environmentScene.add(sky.clone());
+const pmrem = new T.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(environmentScene, 0.04).texture;
+scene.environmentIntensity = 0.035;
+pmrem.dispose();
 let seed = 41;
 function rand() {
   seed = (seed * 1664525 + 1013904223) >>> 0;
@@ -384,11 +389,54 @@ cylinder(13, 11, 2, white, -300, 49, -1840);
 box(-300, 56, -1840, 1, 13, 1, dark);
 // Buildings: batched facades and roofs, thousands of windows.
 const facade = texture("facade");
-function facadeMap(style){const c=document.createElement('canvas');c.width=c.height=512;const g=c.getContext('2d');g.fillStyle=style===0?'#466477':style===1?'#9d8d76':'#a8a6a0';g.fillRect(0,0,512,512);for(let y=0;y<512;y+=48){for(let x=0;x<512;x+=style===0?24:42){if(style===0){g.fillStyle=['#668493','#718e9b','#587886'][Math.floor(rand()*3)];g.fillRect(x+2,y+2,21,44);g.fillStyle='#bbc3c3';g.fillRect(x,y,1,48);}else{g.fillStyle='#d0c9bb';g.fillRect(x+8,y+8,23,31);g.fillStyle='#314653';g.fillRect(x+10,y+10,19,26);g.fillStyle='#88969a';g.fillRect(x+19,y+10,1,26);}}g.fillStyle=style===0?'#b6bfc0':'#827d73';g.fillRect(0,y,512,2);}const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;}
-const buildingMats=[0,1,2,1,2].map((style)=>new T.MeshStandardMaterial({map:facadeMap(style),color:0xffffff,roughness:style===0?.28:.85,metalness:style===0?.35:0,side:T.DoubleSide}));
+function facadeMap(style) {
+  const c = document.createElement("canvas");
+  c.width = c.height = 512;
+  const g = c.getContext("2d");
+  g.fillStyle = style === 0 ? "#466477" : style === 1 ? "#9d8d76" : "#a8a6a0";
+  g.fillRect(0, 0, 512, 512);
+  for (let y = 0; y < 512; y += 48) {
+    for (let x = 0; x < 512; x += style === 0 ? 24 : 42) {
+      if (style === 0) {
+        g.fillStyle = ["#668493", "#718e9b", "#587886"][Math.floor(rand() * 3)];
+        g.fillRect(x + 2, y + 2, 21, 44);
+        g.fillStyle = "#bbc3c3";
+        g.fillRect(x, y, 1, 48);
+      } else {
+        g.fillStyle = "#d0c9bb";
+        g.fillRect(x + 8, y + 8, 23, 31);
+        g.fillStyle = "#314653";
+        g.fillRect(x + 10, y + 10, 19, 26);
+        g.fillStyle = "#88969a";
+        g.fillRect(x + 19, y + 10, 1, 26);
+      }
+    }
+    g.fillStyle = style === 0 ? "#b6bfc0" : "#827d73";
+    g.fillRect(0, y, 512, 2);
+  }
+  const t = new T.CanvasTexture(c);
+  t.colorSpace = T.SRGBColorSpace;
+  t.wrapS = t.wrapT = T.RepeatWrapping;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
+const buildingMats = [0, 1, 2, 1, 2].map(
+  (style) =>
+    new T.MeshStandardMaterial({
+      map: facadeMap(style),
+      color: 0xffffff,
+      roughness: style === 0 ? 0.28 : 0.85,
+      metalness: style === 0 ? 0.35 : 0,
+      side: T.DoubleSide,
+    }),
+);
 const cityColliders = addCity(scene, mapData, buildingMats, concrete);
-const collisions=collisionIndex(cityColliders);
-const impact=new Impact(scene);
+cityColliders.push(
+  { minX: -288, maxX: -218, minZ: -1735, maxZ: -1165, h: 21 },
+  { minX: -313, maxX: -287, minZ: -1853, maxZ: -1827, h: 57 },
+);
+const collisions = collisionIndex(cityColliders);
+const impact = new Impact(scene);
 // Canary Wharf, positioned west of the airport; One Canada Square's pyramid.
 const pyramid = new T.Mesh(
   new T.ConeGeometry(39, 25, 4),
@@ -439,13 +487,48 @@ function aircraft() {
     paint = mat(0xe2e3db, 0.34, 0.25),
     blue = mat(0x1b3349, 0.4, 0.3);
   // Continuous E190 fuselage: pointed radome, cylindrical cabin, tapered tailcone.
-  const profile=[[-18.1,.06],[-17.7,.55],[-16.9,1.1],[-15.5,1.5],[-13.8,1.65],[9.8,1.65],[12,1.42],[14,1.05],[16,.55],[18.1,.08]];
-  const curve=new T.SplineCurve(profile.map(([z,r])=>new T.Vector2(r,z)));
-  const fusGeo=new T.LatheGeometry(curve.getPoints(100),64);
-  fusGeo.rotateX(Math.PI/2);
+  const profile = [
+    [-18.1, 0.06],
+    [-17.7, 0.55],
+    [-16.9, 1.1],
+    [-15.5, 1.5],
+    [-13.8, 1.65],
+    [9.8, 1.65],
+    [12, 1.42],
+    [14, 1.05],
+    [16, 0.55],
+    [18.1, 0.08],
+  ];
+  const samples = [];
+  for (let j = 0; j < profile.length - 1; j++)
+    for (let k = 0; k < 8; k++) {
+      const t = k / 8,
+        u = t * t * (3 - 2 * t);
+      samples.push(
+        new T.Vector2(
+          T.MathUtils.lerp(profile[j][1], profile[j + 1][1], u),
+          T.MathUtils.lerp(profile[j][0], profile[j + 1][0], t),
+        ),
+      );
+    }
+  samples.push(new T.Vector2(0.08, 18.1));
+  const fusGeo = new T.LatheGeometry(samples, 64);
+  fusGeo.rotateX(Math.PI / 2);
   // Lathe Y becomes Z; build with a sharp navy/white boundary.
-  const colours=[];for(let i=0;i<fusGeo.attributes.position.count;i++){const c=new T.Color(fusGeo.attributes.position.getY(i)<-.45?0x071e42:0xf3f5f5);colours.push(c.r,c.g,c.b);}
-  fusGeo.setAttribute('color',new T.Float32BufferAttribute(colours,3));const skin=new T.MeshStandardMaterial({vertexColors:true,roughness:.3,metalness:.18});a.add(new T.Mesh(fusGeo,skin));
+  const colours = [];
+  for (let i = 0; i < fusGeo.attributes.position.count; i++) {
+    const c = new T.Color(
+      fusGeo.attributes.position.getY(i) < -0.45 ? 0x071e42 : 0xf3f5f5,
+    );
+    colours.push(c.r, c.g, c.b);
+  }
+  fusGeo.setAttribute("color", new T.Float32BufferAttribute(colours, 3));
+  const skin = new T.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: 0.3,
+    metalness: 0.18,
+  });
+  a.add(new T.Mesh(fusGeo, skin));
   function wing(points, m) {
     const shape = new T.Shape();
     points.forEach(([x, z], i) =>
@@ -528,7 +611,15 @@ function aircraft() {
   );
   finGeo.setIndex([0, 1, 2, 0, 2, 3]);
   finGeo.computeVertexNormals();
-  a.add(new T.Mesh(finGeo, tailMat));
+  for (const side of [-1, 1]) {
+    const fin = new T.Mesh(finGeo, tailMat);
+    fin.position.x = side * 0.09;
+    a.add(fin);
+  }
+  const finEdge = new T.Mesh(new T.CylinderGeometry(0.1, 0.18, 7.6, 12), blue);
+  finEdge.position.set(0, 4.2, 12);
+  finEdge.rotation.x = 0.55;
+  a.add(finEdge);
   const titlesCanvas = document.createElement("canvas");
   titlesCanvas.width = 2048;
   titlesCanvas.height = 256;
@@ -557,28 +648,83 @@ function aircraft() {
     titleMesh.position.set(x, 0.65, -6);
     a.add(titleMesh);
   }
-  
+
   for (const x of [-14, 14]) {
     const tip = box(x, 0.6, 6, 0.15, 1.5, 2, blue, a);
     tip.rotation.z = x < 0 ? 0.25 : -0.25;
   }
   for (const x of [-5, 5]) {
-    const eng = new T.Mesh(new T.CylinderGeometry(0.95, 0.8, 4, 20), paint);
+    const eng = new T.Mesh(
+      new T.CylinderGeometry(1.05, 0.85, 4, 40, 1, true),
+      paint,
+    );
     eng.rotation.x = Math.PI / 2;
     eng.position.set(x, -1.2, 2);
     a.add(eng);
-    const exhaust = new T.Mesh(new T.CircleGeometry(0.66, 20), dark);
+    const exhaust = new T.Mesh(
+      new T.CircleGeometry(0.8, 40),
+      mat(0x080d13, 0.9, 0),
+    );
     exhaust.position.set(x, -1.2, 4.03);
     a.add(exhaust);
-    const intake = new T.Mesh(new T.CircleGeometry(0.72, 20), dark);
+    const intake = new T.Mesh(new T.CircleGeometry(0.94, 40), dark);
     intake.rotation.y = Math.PI;
-    intake.position.set(x, -1.2, -0.05);
-    a.add(intake);const rim=new T.Mesh(new T.TorusGeometry(.79,.09,10,40),mat(0xb6bec3,.22,.8));rim.position.set(x,-1.2,-.08);a.add(rim);for(let i=0;i<16;i++){const blade=box(x,-1.2,-.065,.045,1.28,.03,mat(0x394149,.5,.65),a);blade.rotation.z=i*Math.PI/16;}
+    intake.position.set(x, -1.2, 0.1);
+    a.add(intake);
+    const rim = new T.Mesh(
+      new T.TorusGeometry(0.98, 0.075, 12, 48),
+      mat(0xb6bec3, 0.22, 0.8),
+    );
+    rim.position.set(x, -1.2, -0.08);
+    a.add(rim);
+    for (let i = 0; i < 16; i++) {
+      const blade = box(
+        x,
+        -1.2,
+        -0.065,
+        0.045,
+        1.28,
+        0.03,
+        mat(0x394149, 0.5, 0.65),
+        a,
+      );
+      blade.rotation.z = (i * Math.PI) / 16;
+    }
   }
   for (const x of [-1.67, 1.67])
-    for (let z = -8; z < 9; z += 1.4) {const windowMesh=new T.Mesh(new T.SphereGeometry(1,10,8),dark);windowMesh.scale.set(.045,.26,.18);windowMesh.position.set(x,.32,z);a.add(windowMesh);}
-  for(const side of [-1,1]){const cockpit=new T.Mesh(new T.PlaneGeometry(1.8,.55),new T.MeshStandardMaterial({color:0x132a3a,roughness:.14,metalness:.5}));cockpit.position.set(side*.84,.83,-15.5);cockpit.rotation.y=side*.65;cockpit.rotation.x=.12;a.add(cockpit);}
+    for (let z = -8; z < 9; z += 1.4) {
+      const windowMesh = new T.Mesh(new T.SphereGeometry(1, 10, 8), dark);
+      windowMesh.scale.set(0.045, 0.26, 0.18);
+      windowMesh.position.set(x, 0.32, z);
+      a.add(windowMesh);
+    }
+  for (const side of [-1, 1]) {
+    const cockpit = new T.Mesh(
+      new T.PlaneGeometry(2.1, 0.65),
+      new T.MeshStandardMaterial({
+        color: 0x132a3a,
+        roughness: 0.14,
+        metalness: 0.5,
+      }),
+    );
+    cockpit.position.set(side * 0.89, 0.75, -15.65);
+    cockpit.rotation.y = side * 0.65;
+    cockpit.rotation.x = 0.12;
+    a.add(cockpit);
+  }
 
+  const windshield = new T.Mesh(
+    new T.PlaneGeometry(1.65, 0.6),
+    new T.MeshStandardMaterial({
+      color: 0x07131e,
+      roughness: 0.1,
+      metalness: 0.2,
+      side: T.DoubleSide,
+    }),
+  );
+  windshield.position.set(0, 0.9, -16.35);
+  windshield.rotation.x = -0.5;
+  a.add(windshield);
   for (const x of [-1, 1])
     for (const z of [-7, 4]) {
       box(x, -2, z, 0.15, 2, 0.15, dark, a);
@@ -722,12 +868,35 @@ document.querySelectorAll("[data-key]").forEach((b) => {
   };
   b.onpointerup = b.onpointercancel = () => (keys[b.dataset.key] = false);
 });
-function playImpactSound(){if(!sound||!audio)return;const buffer=audio.createBuffer(1,audio.sampleRate*2,audio.sampleRate),samples=buffer.getChannelData(0);for(let i=0;i<samples.length;i++)samples[i]=(Math.random()*2-1)*Math.exp(-i/(audio.sampleRate*.45));const noise=audio.createBufferSource();noise.buffer=buffer;const filter=audio.createBiquadFilter();filter.type='lowpass';filter.frequency.value=600;const volume=audio.createGain();volume.gain.value=.5;noise.connect(filter).connect(volume).connect(audio.destination);noise.start();noise.onended=()=>{noise.disconnect();filter.disconnect();volume.disconnect();};}
+function playImpactSound() {
+  if (!sound || !audio) return;
+  const buffer = audio.createBuffer(1, audio.sampleRate * 2, audio.sampleRate),
+    samples = buffer.getChannelData(0);
+  for (let i = 0; i < samples.length; i++)
+    samples[i] =
+      (Math.random() * 2 - 1) * Math.exp(-i / (audio.sampleRate * 0.45));
+  const noise = audio.createBufferSource();
+  noise.buffer = buffer;
+  const filter = audio.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 600;
+  const volume = audio.createGain();
+  volume.gain.value = 0.5;
+  noise.connect(filter).connect(volume).connect(audio.destination);
+  noise.start();
+  noise.onended = () => {
+    noise.disconnect();
+    filter.disconnect();
+    volume.disconnect();
+  };
+}
 function report(crash = false) {
   flight.done = true;
   $("result").hidden = false;
   $("result-title").textContent = crash
-    ? "Approach missed."
+    ? flight.crashed
+      ? "Aircraft lost."
+      : "Approach missed."
     : "Welcome to London.";
   $("result-copy").textContent = crash
     ? result?.reason || "Runway overrun. Apply the brakes after touchdown."
@@ -735,21 +904,77 @@ function report(crash = false) {
   $("score").textContent = crash ? "TRY AGAIN" : `${result.score} / 100`;
 }
 function updateFlight(dt) {
-  if(flight.crashed){impact.update(dt);plane.visible=false;camera.lookAt(impact.origin);if(impact.age>1.8 && $("result").hidden)report(true);return;}
+  if (flight.crashed) {
+    impact.update(dt);
+    plane.visible = false;
+    camera.lookAt(impact.origin);
+    if (impact.age > 1.8 && $("result").hidden) report(true);
+    return;
+  }
   if (!flight.done) {
-    const previous=worldPos(flight.x,flight.y,flight.z);
+    const previous = worldPos(flight.x, flight.y, flight.z);
     stepFlight(flight, keys, dt);
     const wp = worldPos(flight.x, flight.y, flight.z);
-    if (
-      !flight.ground &&
-      collisions.hit(previous,wp)
-    ) {
+    const struck = !flight.ground && collisions.hit(previous, wp);
+    if (struck) {
       result = {
         reason:
           "Building strike. Keep above the skyline and follow the glideslope.",
       };
-      flight.done=true;flight.crashed=true;impact.trigger(wp);plane.visible=false;
-      const forward=new T.Vector3(Math.sin(flight.heading*Math.PI/180),0,-Math.cos(flight.heading*Math.PI/180)).multiplyScalar(approach==='09'?-1:1);camera.position.copy(previous).addScaledVector(forward,-85).add(new T.Vector3(25,30,0));camera.lookAt(wp);playImpactSound();return;
+      flight.done = true;
+      flight.crashed = true;
+      $("status").textContent = "BUILDING IMPACT";
+      $("guide").textContent = "AIRCRAFT LOST";
+      const sides = [
+        {
+          d: Math.abs(wp.x - struck.minX),
+          x: struck.minX - 3,
+          z: Math.max(struck.minZ, Math.min(struck.maxZ, wp.z)),
+          nx: -1,
+          nz: 0,
+        },
+        {
+          d: Math.abs(wp.x - struck.maxX),
+          x: struck.maxX + 3,
+          z: Math.max(struck.minZ, Math.min(struck.maxZ, wp.z)),
+          nx: 1,
+          nz: 0,
+        },
+        {
+          d: Math.abs(wp.z - struck.minZ),
+          z: struck.minZ - 3,
+          x: Math.max(struck.minX, Math.min(struck.maxX, wp.x)),
+          nx: 0,
+          nz: -1,
+        },
+        {
+          d: Math.abs(wp.z - struck.maxZ),
+          z: struck.maxZ + 3,
+          x: Math.max(struck.minX, Math.min(struck.maxX, wp.x)),
+          nx: 0,
+          nz: 1,
+        },
+      ];
+      sides.sort((a, b) => a.d - b.d);
+      const face = sides[0],
+        contact = new T.Vector3(
+          face.x,
+          Math.max(3, Math.min(struck.h, wp.y)),
+          face.z,
+        );
+      impact.trigger(contact);
+      plane.visible = false;
+      const forward = new T.Vector3(
+        Math.sin((flight.heading * Math.PI) / 180),
+        0,
+        -Math.cos((flight.heading * Math.PI) / 180),
+      ).multiplyScalar(approach === "09" ? -1 : 1);
+      camera.position
+        .copy(contact)
+        .add(new T.Vector3(face.nx * 75, 25, face.nz * 75));
+      camera.lookAt(contact);
+      playImpactSound();
+      return;
     }
     if (!flight.done && !flight.ground && flight.y <= 4.5) {
       result = landingVerdict(flight);
@@ -764,7 +989,6 @@ function updateFlight(dt) {
     }
     if (flight.ground && flight.speed < 2) report();
     if (flight.ground && flight.z < -1508) report(true);
-
   }
   plane.position.copy(worldPos(flight.x, flight.y, flight.z));
   plane.rotation.order = "YXZ";
@@ -779,9 +1003,12 @@ function updateFlight(dt) {
     -Math.cos((flight.heading * Math.PI) / 180),
   ).multiplyScalar(approach === "09" ? -1 : 1);
   if (view === 0) {
-    camera.position
-      .copy(plane.position)
-      .add(dir.clone().multiplyScalar(-66).add(new T.Vector3(0,15,0)));
+    camera.position.copy(plane.position).add(
+      dir
+        .clone()
+        .multiplyScalar(-66)
+        .add(new T.Vector3(-dir.z * 14, 18, dir.x * 14)),
+    );
     camera.lookAt(
       plane.position
         .clone()
@@ -790,9 +1017,12 @@ function updateFlight(dt) {
     );
     plane.visible = true;
   } else if (view === 1) {
-    camera.position
-      .copy(plane.position)
-      .add(dir.clone().multiplyScalar(12).add(new T.Vector3(0,1,0)));
+    camera.position.copy(plane.position).add(
+      dir
+        .clone()
+        .multiplyScalar(12)
+        .add(new T.Vector3(0, 1, 0)),
+    );
     camera.lookAt(
       plane.position
         .clone()
@@ -801,7 +1031,10 @@ function updateFlight(dt) {
     );
     plane.visible = false;
   } else {
-    camera.position.copy(plane.position).add(new T.Vector3(-dir.z*40,13,dir.x*40)).addScaledVector(dir,-20);
+    camera.position
+      .copy(plane.position)
+      .add(new T.Vector3(-dir.z * 40, 13, dir.x * 40))
+      .addScaledVector(dir, -20);
     camera.lookAt(plane.position);
     plane.visible = true;
   }
@@ -955,9 +1188,18 @@ window.sim = {
     renderer.render(scene, camera);
   },
   renderer,
-  get camera(){return {position:camera.position.toArray(),direction:camera.getWorldDirection(new T.Vector3()).toArray()};},
-  get impact(){return {age:impact.age,visible:impact.group.visible};},
-  get buildings(){return cityColliders;},
+  get camera() {
+    return {
+      position: camera.position.toArray(),
+      direction: camera.getWorldDirection(new T.Vector3()).toArray(),
+    };
+  },
+  get impact() {
+    return { age: impact.age, visible: impact.group.visible };
+  },
+  get buildings() {
+    return cityColliders;
+  },
   choose,
   freeze() {
     manual = true;

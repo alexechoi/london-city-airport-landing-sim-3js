@@ -31,7 +31,7 @@ Runway **09, from the west over Canary Wharf**, is the default. Select **27** fo
 | M | Sound on / off |
 | Escape | Return to title |
 
-Wings must be level, touchdown must be inside the runway, sink rate below 4 m/s and speed below 150 knots. Alignment and sink rate determine your score. The runway is narrow: use small inputs. Tall buildings are collidable. Background-tab play pauses automatically; press P to resume.
+Wings must be level, touchdown must be inside the runway, sink rate below 4 m/s and speed below 150 knots. Alignment and sink rate determine your score. The runway is narrow: use small inputs. Buildings, including low-rise buildings and the terminal, are collidable. Building strikes trigger a fireball, smoke, debris and (when sound is enabled) impact audio. Background-tab play pauses automatically; press P to resume.
 
 ## Cinematic and capture
 
@@ -59,3 +59,9 @@ Netlify uses `netlify.toml`: `npm run build`, publish `dist`. No server, paid ma
 - [Final approach screenshot](https://city-landing.alexchoi.xyz/screenshots/approach.jpg)
 
 The video is rendered from the actual Three.js scene at 1280×720, 24 fps, H.264/AAC.
+
+## Rendering and control fixes
+
+The renderer uses logarithmic depth for kilometre-scale scenery, separated ground layers, anisotropic facade textures and softer water slopes. Redundant overlapping road surfaces and randomly placed trees were removed. The chase camera follows the aircraft heading with a small side offset; leaving the approach does not end the flight.
+
+`node scripts/check-revision.mjs` checks all four cardinal camera headings on both approaches, flight outside the old boundary, impact effects and retry cleanup, and saves 48 motion frames.
