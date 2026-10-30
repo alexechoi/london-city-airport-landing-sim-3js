@@ -1,4 +1,5 @@
 import "./style.css";
+import { addStreetDetails } from "./street-details.js";
 import { buildO2 } from "./o2.js";
 import { addLandmarkDetails } from "./landmarks.js";
 import { mergeStaticMeshes } from "./batching.js";
@@ -77,11 +78,14 @@ const sky = new Sky();
 sky.scale.setScalar(40000);
 sky.material.fragmentShader = sky.material.fragmentShader.replace(
   "gl_FragColor = vec4( texColor, 1.0 );",
-  "gl_FragColor = vec4( texColor * .45, 1.0 );",
+  "gl_FragColor = vec4( texColor * .22, 1.0 );",
 );
 scene.add(sky);
 Object.assign(sky.material.uniforms.turbidity, { value: 5 });
-sky.material.uniforms.rayleigh.value = 1.5;
+sky.material.uniforms.rayleigh.value = 2.4;
+sky.material.uniforms.cloudCoverage.value = 0.48;
+sky.material.uniforms.cloudDensity.value = 0.6;
+sky.material.uniforms.cloudElevation.value = 0.7;
 sky.material.uniforms.mieCoefficient.value = 0.006;
 sky.material.uniforms.sunPosition.value.copy(sun);
 scene.add(new T.HemisphereLight(0xbcd4ee, 0x7d7568, 1.45));
@@ -106,7 +110,7 @@ const environmentScene = new T.Scene();
 environmentScene.add(sky.clone());
 const pmrem = new T.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(environmentScene, 0.04).texture;
-scene.environmentIntensity = 0.035;
+scene.environmentIntensity = 0.07;
 pmrem.dispose();
 let seed = 41;
 function rand() {
@@ -180,9 +184,9 @@ const normals = new T.CanvasTexture(normalCanvas);
 normals.wrapS = normals.wrapT = T.RepeatWrapping;
 const oceanParams = {
   ...defaultOceanParams(),
-  windSpeed: 3.2,
+  windSpeed: 5.8,
   fetchKm: 2,
-  waveScale: 0.12,
+  waveScale: 0.32,
   swellScale: 0,
 };
 const ocean = new OceanSim(renderer, oceanParams);
@@ -197,7 +201,7 @@ function water(x, z, w, d, geometry) {
     sunDirection: sun,
     sunColor: 0xffe4bc,
     waterColor: 0x18383a,
-    distortionScale: 0.65,
+    distortionScale: 2.4,
     fog: true,
   });
   o.rotation.x = -Math.PI / 2;
@@ -213,7 +217,7 @@ function water(x, z, w, d, geometry) {
     en = o.material.fragmentShader.indexOf("void sunLight", st);
   o.material.fragmentShader =
     o.material.fragmentShader.slice(0, st) +
-    `vec4 getNoise(vec2 uv){vec2 slope=texture2D(uSlope0,uv/600.0).xy+texture2D(uSlope1,uv/85.0).xy+texture2D(uSlope2,uv/12.0).xy; slope*=0.35;return vec4(-slope.x,-slope.y,1.0,1.0);}
+    `vec4 getNoise(vec2 uv){vec2 slope=texture2D(uSlope0,uv/600.0).xy;float eyeDistance=length(cameraPosition.xz-uv);slope+=texture2D(uSlope1,uv/85.0).xy*(1.-smoothstep(150.,1200.,eyeDistance));slope+=texture2D(uSlope2,uv/12.0).xy*(1.-smoothstep(30.,250.,eyeDistance));slope*=0.65;return vec4(-slope.x,-slope.y,1.0,1.0);}
 ` +
     o.material.fragmentShader.slice(en);
   o.material.fragmentShader = o.material.fragmentShader.replace(
@@ -425,6 +429,7 @@ const vegetationCount = await addVegetation(
   collisions,
   mapData.roads,
 );
+const streetStats = addStreetDetails(scene, mapData.roads, waterData);
 const impact = new Impact(scene);
 addLandmarkDetails(scene, mapData);
 // Crown shares the tower's bounds and sits directly on its 205 m roof.
@@ -437,9 +442,9 @@ const crownWidth =
   ) * 0.93;
 const pyramid = new T.Mesh(
   new T.ConeGeometry(crownWidth / Math.SQRT2, 30, 4),
-  mat(0xaab5b9, 0.3, 0.7),
+  mat(0xb9c7d0, 0.35, 0.35),
 );
-pyramid.rotation.y = Math.PI / 4 - 0.049;
+pyramid.rotation.y = Math.PI / 4 - 0.125;
 pyramid.position.set(canadaX, 220, canadaZ);
 pyramid.material.envMapIntensity = 8;
 pyramid.material.onBeforeCompile = (s) => {
@@ -451,12 +456,12 @@ pyramid.material.onBeforeCompile = (s) => {
   s.fragmentShader = "varying float vCrownHeight;\n" + s.fragmentShader;
   s.fragmentShader = s.fragmentShader.replace(
     "#include <color_fragment>",
-    "#include <color_fragment>\nfloat stripe=abs(fract(vCrownHeight/1.5)-.5);float seam=1.-smoothstep(.02,.02+fwidth(vCrownHeight),stripe);diffuseColor.rgb*=1.-seam*.22;",
+    "#include <color_fragment>\nfloat q=vCrownHeight/1.5;float fw=max(fwidth(q),.0001);float stripe=abs(fract(q+.5)-.5);float seam=clamp((.015-stripe)/fw+.5,0.,1.)*min(1.,.03/fw);diffuseColor.rgb*=1.-seam*.12;",
   );
 };
 pyramid.castShadow = true;
 scene.add(pyramid);
-box(
+const crownCollar = box(
   canadaX,
   205,
   canadaZ,
@@ -465,6 +470,7 @@ box(
   crownWidth,
   mat(0xaab5b9, 0.35, 0.6),
 );
+crownCollar.rotation.y = -0.125;
 cityColliders.push({
   minX: canadaX - crownWidth / 2,
   maxX: canadaX + crownWidth / 2,
@@ -515,22 +521,6 @@ for (let i = 0; i < 7; i++) {
 const airportBatch = mergeStaticMeshes(airportMeshes);
 airportMeshes.forEach((o) => scene.remove(o));
 scene.add(airportBatch);
-// Subtle volumetric-looking cloud banks.
-const cloudMat = new T.MeshBasicMaterial({
-  color: 0xe6e1d5,
-  transparent: true,
-  opacity: 0.065,
-  depthWrite: false,
-});
-for (let i = 0; i < 35; i++) {
-  const c = new T.Mesh(new T.SphereGeometry(1, 12, 8), cloudMat);
-  c.position.set(
-    (rand() - 0.5) * 22000,
-    1300 + rand() * 1200,
-    -9000 + rand() * 16000,
-  );
-  c.scale.set(500 + rand() * 1000, 45 + rand() * 65, 200 + rand() * 500);
-}
 let approach = "09";
 function worldPos(x, y, z) {
   return approach === "09"
@@ -976,6 +966,7 @@ window.sim = {
   renderer,
   architectureStats,
   o2Stats,
+  streetStats,
   vegetationCount,
   setShadows(enabled, normalBias = 0.65) {
     renderer.shadowMap.enabled = enabled;

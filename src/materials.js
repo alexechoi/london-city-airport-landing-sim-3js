@@ -78,10 +78,10 @@ export function createCityMaterials() {
       float detail=1.-smoothstep(.22,1.,max(fw.x,fw.y));
       float room=mix(.5,hashCity(floor(grid)+vec2(identity,identity*.37)),detail);
       float modern=${idx === 8 ? "step(40.,vBuilding.w)" : modern ? "1." : "0."};
-      float wx=${idx === 9 ? ".17" : "mix(.23,.035,modern)"},wy=${idx === 9 ? ".12" : "mix(.23,.20,modern)"};
+      float wx=${idx === 9 ? "mix(.21,.065,step(176.,vMetric.y))" : "mix(.23,.035,modern)"},wy=${idx === 9 ? "mix(.24,.10,step(176.,vMetric.y))" : "mix(.23,.20,modern)"};
       float opening=pulse(cell.x,wx,1.-wx,fw.x)*pulse(cell.y,wy,.93,fw.y);
       ${idx === 7 ? `opening*=smoothstep(vBuilding.w-3.5,vBuilding.w-2.8,vMetric.y);` : ""}
-      ${idx === 9 ? `opening*=1.-smoothstep(198.,202.,vMetric.y);` : ""}
+      ${idx === 9 ? `opening*=1.-smoothstep(200.,201.,vMetric.y);opening*=1.-(smoothstep(173.,173.4,vMetric.y)*(1.-smoothstep(175.5,176.,vMetric.y)));` : ""}
       float reveal=pulse(cell.x,wx-.025,1.-wx+.025,fw.x)*pulse(cell.y,wy-.025,.95,fw.y);
       float frame=pulse(cell.x,.488,.512,fw.x)*opening;
       float row=vMetric.y/.075;

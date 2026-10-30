@@ -12,9 +12,12 @@ export function buildO2(scene, origin, services) {
     metalness: 0.45,
   });
   const cable = new T.MeshStandardMaterial({
-    color: 0x889396,
+    color: 0xb5c0c3,
+    transparent: true,
+    opacity: 0.45,
+    depthWrite: false,
     roughness: 0.55,
-    metalness: 0.65,
+    metalness: 0.15,
   });
   const silver = new T.MeshStandardMaterial({
     color: 0x9da8ac,
@@ -59,7 +62,7 @@ export function buildO2(scene, origin, services) {
       float ring=radius/12.;
       float rw=max(fwidth(ring),.0001);
       float join=(1.-smoothstep(.003,.003+rw,abs(fract(ring+.5)-.5)))*min(1.,.025/rw);
-      float panelShade=.975+.025*cos(angle*96.);
+      float panelShade=.99+.01*cos(angle*96.)*(1.-smoothstep(.1,.5,fw));
       float edgeWeather=smoothstep(152.,183.,radius)*.065;
       diffuseColor.rgb*=panelShade-seam*.19-join*.06-edgeWeather;
     `,
@@ -277,6 +280,15 @@ export function buildO2(scene, origin, services) {
   mesh(new T.CylinderGeometry(181, 181, 1, 192), stone, [0, 0.3, 0]);
   const result = mergeStaticMeshes(pieces);
   for (const o of pieces) o.geometry.dispose();
+  for (const mesh of result.children) {
+    // Sub-pixel cables and lattice diagonals cannot cast stable metre-scale map shadows.
+    if (
+      mesh.material === cable ||
+      mesh.material === metal ||
+      mesh.material === silver
+    )
+      mesh.castShadow = false;
+  }
   result.position.copy(origin);
   scene.add(result);
   return {
