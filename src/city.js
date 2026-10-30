@@ -15,7 +15,7 @@ export function addCity(scene, data, materials, roofMaterial) {
     const [height, poly, type] = data.buildings[index];
     if (poly.length < 4) continue;
     const h = Math.min(310, height),
-      b = batches[index % materials.length];
+      b = batches[height>45?0:1+index % (materials.length-1)];
     const points = poly.slice(0, -1);
     let minX = Infinity,
       maxX = -Infinity,
@@ -60,7 +60,7 @@ export function addCity(scene, data, materials, roofMaterial) {
         f.map((i) => [points[i][0] / 25, points[i][1] / 25]),
       );
     }
-    if (h > 50) colliders.push({ minX, maxX, minZ, maxZ, h });
+    if (h > 2) colliders.push({ minX, maxX, minZ, maxZ, h });
   }
   function mesh(b, m) {
     const g = new T.BufferGeometry();
@@ -102,15 +102,14 @@ export function addCity(scene, data, materials, roofMaterial) {
   const rg = new T.BufferGeometry();
   rg.setAttribute("position", new T.Float32BufferAttribute(p, 3));
   rg.computeVertexNormals();
-  scene.add(
-    new T.Mesh(
+  const roadMesh = new T.Mesh(
       rg,
       new T.MeshStandardMaterial({
         color: 0x5d605e,
         roughness: 0.95,
         side: T.DoubleSide,
       }),
-    ),
-  );
+    );
+  // Satellite ground already contains the street network; avoid overlapping ribbons.
   return colliders;
 }

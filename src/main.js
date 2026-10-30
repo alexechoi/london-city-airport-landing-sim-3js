@@ -1,4 +1,6 @@
 import "./style.css";
+import { Impact } from "./impact.js";
+import { collisionIndex } from "./collision.js";
 import { addCity } from "./city.js";
 const [mapData, waterData] = await Promise.all([
   fetch("/london.json").then((r) => r.json()),
@@ -16,23 +18,24 @@ const $ = (id) => document.getElementById(id),
   renderer = new T.WebGLRenderer({
     canvas: $("world"),
     antialias: true,
+    logarithmicDepthBuffer: true,
     powerPreference: "high-performance",
   });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.7));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = T.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.85;
+renderer.toneMappingExposure = 0.9;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = T.PCFSoftShadowMap;
 const scene = new T.Scene();
-scene.fog = new T.FogExp2(0xb8c1c0, 0.00019);
+scene.fog = new T.FogExp2(0xb8cbd7, 0.000095);
 const camera = new T.PerspectiveCamera(
   48,
   innerWidth / innerHeight,
   0.5,
   26000,
 );
-const sun = new T.Vector3(-0.7, 0.22, -0.5).normalize();
+const sun = new T.Vector3(-0.55, 0.48, -0.65).normalize();
 const sky = new Sky();
 sky.scale.setScalar(40000);
 scene.add(sky);
@@ -40,8 +43,8 @@ Object.assign(sky.material.uniforms.turbidity, { value: 5 });
 sky.material.uniforms.rayleigh.value = 1.5;
 sky.material.uniforms.mieCoefficient.value = 0.006;
 sky.material.uniforms.sunPosition.value.copy(sun);
-scene.add(new T.HemisphereLight(0xdce9f4, 0x9c8b70, 2.5));
-const sunlight = new T.DirectionalLight(0xffdfb1, 3.2);
+scene.add(new T.HemisphereLight(0xdce9f4, 0x676e72, 1.1));
+const sunlight = new T.DirectionalLight(0xffeed5, 3.5);
 sunlight.position.copy(sun).multiplyScalar(4000);
 sunlight.castShadow = true;
 sunlight.shadow.mapSize.set(2048, 2048);
@@ -57,6 +60,7 @@ sunlight.shadow.bias = -0.0003;
 sunlight.target.position.set(0, 0, -750);
 scene.add(sunlight.target);
 scene.add(sunlight);
+const environmentScene=new T.Scene();environmentScene.add(sky.clone());const pmrem=new T.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(environmentScene,.04).texture;scene.environmentIntensity=.035;pmrem.dispose();
 let seed = 41;
 function rand() {
   seed = (seed * 1664525 + 1013904223) >>> 0;
@@ -122,7 +126,7 @@ const groundTex = texture("ground");
 groundTex.repeat.set(80, 80);
 const terrain = mat(0x8b8976);
 terrain.map = groundTex;
-box(0, -5, -2500, 24000, 8, 20000, terrain);
+box(0, -15, -2500, 24000, 8, 20000, terrain);
 const loader = new T.TextureLoader();
 function photo(url, repeat) {
   const t = loader.load("/textures/" + url + ".jpg");
@@ -136,7 +140,7 @@ const paving = photo("concrete", 20);
 concrete.map = paving;
 grass.map = photo("grass", 15);
 asphalt.map = photo("asphalt", 8);
-terrain.map = photo("grass", 800);
+terrain.map = photo("grass", 120);
 terrain.color.setHex(0x939b86);
 
 // EOX Sentinel-2 cloudless aerial ground, CC BY 4.0. North-up geographic image
@@ -187,7 +191,7 @@ const oceanParams = {
   ...defaultOceanParams(),
   windSpeed: 3.2,
   fetchKm: 2,
-  waveScale: 0.5,
+  waveScale: 0.12,
   swellScale: 0,
 };
 const ocean = new OceanSim(renderer, oceanParams);
@@ -196,13 +200,13 @@ renderer.setRenderTarget(null);
 const waters = [];
 function water(x, z, w, d, geometry) {
   const o = new Water(geometry || new T.PlaneGeometry(w, d), {
-    textureWidth: 512,
-    textureHeight: 512,
+    textureWidth: 1024,
+    textureHeight: 1024,
     waterNormals: normals,
     sunDirection: sun,
     sunColor: 0xffe4bc,
     waterColor: 0x18383a,
-    distortionScale: 2.7,
+    distortionScale: 0.65,
     fog: true,
   });
   o.rotation.x = -Math.PI / 2;
@@ -218,7 +222,7 @@ function water(x, z, w, d, geometry) {
     en = o.material.fragmentShader.indexOf("void sunLight", st);
   o.material.fragmentShader =
     o.material.fragmentShader.slice(0, st) +
-    `vec4 getNoise(vec2 uv){vec2 slope=texture2D(uSlope0,uv/600.0).xy+texture2D(uSlope1,uv/85.0).xy+texture2D(uSlope2,uv/12.0).xy;return vec4(-slope.x,-slope.y,1.0,1.0);}
+    `vec4 getNoise(vec2 uv){vec2 slope=texture2D(uSlope0,uv/600.0).xy+texture2D(uSlope1,uv/85.0).xy+texture2D(uSlope2,uv/12.0).xy; slope*=0.35;return vec4(-slope.x,-slope.y,1.0,1.0);}
 ` +
     o.material.fragmentShader.slice(en);
   scene.add(o);
@@ -327,7 +331,7 @@ n.rotation.z = Math.PI;
 const glow = new T.MeshBasicMaterial({ color: 0xffdc96 });
 const redglow = new T.MeshBasicMaterial({ color: 0xff4934 });
 const green = new T.MeshBasicMaterial({ color: 0x80ffb0 });
-const bulbGeo = new T.SphereGeometry(0.55, 6, 4);
+const bulbGeo = new T.SphereGeometry(0.16, 8, 6);
 function bulb(x, y, z, m) {
   const o = new T.Mesh(bulbGeo, m);
   o.position.set(x, y, z);
@@ -380,16 +384,11 @@ cylinder(13, 11, 2, white, -300, 49, -1840);
 box(-300, 56, -1840, 1, 13, 1, dark);
 // Buildings: batched facades and roofs, thousands of windows.
 const facade = texture("facade");
-const buildingMats = [0xaab0ac, 0x939c9c, 0xa99f90, 0x87959b, 0xb9b4a5].map(
-  (c) => {
-    const m = mat(c, 0.68, 0.05);
-    m.map = facade;
-    m.side = T.DoubleSide;
-    return m;
-  },
-);
-const buildingData = [];
+function facadeMap(style){const c=document.createElement('canvas');c.width=c.height=512;const g=c.getContext('2d');g.fillStyle=style===0?'#466477':style===1?'#9d8d76':'#a8a6a0';g.fillRect(0,0,512,512);for(let y=0;y<512;y+=48){for(let x=0;x<512;x+=style===0?24:42){if(style===0){g.fillStyle=['#668493','#718e9b','#587886'][Math.floor(rand()*3)];g.fillRect(x+2,y+2,21,44);g.fillStyle='#bbc3c3';g.fillRect(x,y,1,48);}else{g.fillStyle='#d0c9bb';g.fillRect(x+8,y+8,23,31);g.fillStyle='#314653';g.fillRect(x+10,y+10,19,26);g.fillStyle='#88969a';g.fillRect(x+19,y+10,1,26);}}g.fillStyle=style===0?'#b6bfc0':'#827d73';g.fillRect(0,y,512,2);}const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;}
+const buildingMats=[0,1,2,1,2].map((style)=>new T.MeshStandardMaterial({map:facadeMap(style),color:0xffffff,roughness:style===0?.28:.85,metalness:style===0?.35:0,side:T.DoubleSide}));
 const cityColliders = addCity(scene, mapData, buildingMats, concrete);
+const collisions=collisionIndex(cityColliders);
+const impact=new Impact(scene);
 // Canary Wharf, positioned west of the airport; One Canada Square's pyramid.
 const pyramid = new T.Mesh(
   new T.ConeGeometry(39, 25, 4),
@@ -434,32 +433,19 @@ for (let i = 0; i < 650; i++) {
   td.updateMatrix();
   trees.setMatrixAt(i, td.matrix);
 }
-scene.add(trees);
+// Random trees removed: they intersected water and buildings.
 function aircraft() {
   const a = new T.Group(),
     paint = mat(0xe2e3db, 0.34, 0.25),
     blue = mat(0x1b3349, 0.4, 0.3);
-  const skin = paint.clone();
-  skin.vertexColors = true;
-  const fusGeo = new T.CylinderGeometry(1.65, 1.4, 29, 40, 1);
-  const colours = [];
-  for (let i = 0; i < fusGeo.attributes.position.count; i++) {
-    const z = fusGeo.attributes.position.getZ(i);
-    const c = new T.Color(z > 0.35 ? 0x132c50 : 0xf0f1ec);
-    colours.push(c.r, c.g, c.b);
-  }
-  fusGeo.setAttribute("color", new T.Float32BufferAttribute(colours, 3));
-  const fus = new T.Mesh(fusGeo, skin);
-  fus.rotation.x = Math.PI / 2;
-  a.add(fus);
-  const nose = new T.Mesh(new T.SphereGeometry(1.7, 24, 16), paint);
-  nose.scale.set(1, 1, 2);
-  nose.position.z = -14.5;
-  a.add(nose);
-  const tail = new T.Mesh(new T.SphereGeometry(1.45, 20, 12), paint);
-  tail.scale.set(1, 1, 2.8);
-  tail.position.z = 14;
-  a.add(tail);
+  // Continuous E190 fuselage: pointed radome, cylindrical cabin, tapered tailcone.
+  const profile=[[-18.1,.06],[-17.7,.55],[-16.9,1.1],[-15.5,1.5],[-13.8,1.65],[9.8,1.65],[12,1.42],[14,1.05],[16,.55],[18.1,.08]];
+  const curve=new T.SplineCurve(profile.map(([z,r])=>new T.Vector2(r,z)));
+  const fusGeo=new T.LatheGeometry(curve.getPoints(100),64);
+  fusGeo.rotateX(Math.PI/2);
+  // Lathe Y becomes Z; build with a sharp navy/white boundary.
+  const colours=[];for(let i=0;i<fusGeo.attributes.position.count;i++){const c=new T.Color(fusGeo.attributes.position.getY(i)<-.45?0x071e42:0xf3f5f5);colours.push(c.r,c.g,c.b);}
+  fusGeo.setAttribute('color',new T.Float32BufferAttribute(colours,3));const skin=new T.MeshStandardMaterial({vertexColors:true,roughness:.3,metalness:.18});a.add(new T.Mesh(fusGeo,skin));
   function wing(points, m) {
     const shape = new T.Shape();
     points.forEach(([x, z], i) =>
@@ -571,7 +557,7 @@ function aircraft() {
     titleMesh.position.set(x, 0.65, -6);
     a.add(titleMesh);
   }
-  const belly = box(0, -1.4, -0.5, 1.8, 0.35, 28, blue, a);
+  
   for (const x of [-14, 14]) {
     const tip = box(x, 0.6, 6, 0.15, 1.5, 2, blue, a);
     tip.rotation.z = x < 0 ? 0.25 : -0.25;
@@ -587,11 +573,12 @@ function aircraft() {
     const intake = new T.Mesh(new T.CircleGeometry(0.72, 20), dark);
     intake.rotation.y = Math.PI;
     intake.position.set(x, -1.2, -0.05);
-    a.add(intake);
+    a.add(intake);const rim=new T.Mesh(new T.TorusGeometry(.79,.09,10,40),mat(0xb6bec3,.22,.8));rim.position.set(x,-1.2,-.08);a.add(rim);for(let i=0;i<16;i++){const blade=box(x,-1.2,-.065,.045,1.28,.03,mat(0x394149,.5,.65),a);blade.rotation.z=i*Math.PI/16;}
   }
   for (const x of [-1.67, 1.67])
-    for (let z = -8; z < 9; z += 1.4) box(x, 0.4, z, 0.06, 0.5, 0.7, dark, a);
-  box(0, 0.85, -15.2, 2.4, 0.7, 0.6, dark, a);
+    for (let z = -8; z < 9; z += 1.4) {const windowMesh=new T.Mesh(new T.SphereGeometry(1,10,8),dark);windowMesh.scale.set(.045,.26,.18);windowMesh.position.set(x,.32,z);a.add(windowMesh);}
+  for(const side of [-1,1]){const cockpit=new T.Mesh(new T.PlaneGeometry(1.8,.55),new T.MeshStandardMaterial({color:0x132a3a,roughness:.14,metalness:.5}));cockpit.position.set(side*.84,.83,-15.5);cockpit.rotation.y=side*.65;cockpit.rotation.x=.12;a.add(cockpit);}
+
   for (const x of [-1, 1])
     for (const z of [-7, 4]) {
       box(x, -2, z, 0.15, 2, 0.15, dark, a);
@@ -673,6 +660,7 @@ $("sound").onclick = () => {
   $("sound").textContent = sound ? "SOUND ON" : "SOUND OFF";
 };
 function start(m) {
+  impact.reset();
   mode = m;
   document.body.classList.add("play");
   $("hud").hidden = m !== "fly";
@@ -694,6 +682,7 @@ $("demo").onclick = () => start("demo");
 $("restart").onclick = $("again").onclick = () => start("fly");
 $("camera").onclick = () => (view = (view + 1) % 3);
 function exit() {
+  impact.reset();
   mode = "intro";
   document.body.classList.remove("play");
   $("hud").hidden = $("caption").hidden = $("result").hidden = true;
@@ -733,6 +722,7 @@ document.querySelectorAll("[data-key]").forEach((b) => {
   };
   b.onpointerup = b.onpointercancel = () => (keys[b.dataset.key] = false);
 });
+function playImpactSound(){if(!sound||!audio)return;const buffer=audio.createBuffer(1,audio.sampleRate*2,audio.sampleRate),samples=buffer.getChannelData(0);for(let i=0;i<samples.length;i++)samples[i]=(Math.random()*2-1)*Math.exp(-i/(audio.sampleRate*.45));const noise=audio.createBufferSource();noise.buffer=buffer;const filter=audio.createBiquadFilter();filter.type='lowpass';filter.frequency.value=600;const volume=audio.createGain();volume.gain.value=.5;noise.connect(filter).connect(volume).connect(audio.destination);noise.start();noise.onended=()=>{noise.disconnect();filter.disconnect();volume.disconnect();};}
 function report(crash = false) {
   flight.done = true;
   $("result").hidden = false;
@@ -745,25 +735,21 @@ function report(crash = false) {
   $("score").textContent = crash ? "TRY AGAIN" : `${result.score} / 100`;
 }
 function updateFlight(dt) {
+  if(flight.crashed){impact.update(dt);plane.visible=false;camera.lookAt(impact.origin);if(impact.age>1.8 && $("result").hidden)report(true);return;}
   if (!flight.done) {
+    const previous=worldPos(flight.x,flight.y,flight.z);
     stepFlight(flight, keys, dt);
     const wp = worldPos(flight.x, flight.y, flight.z);
     if (
       !flight.ground &&
-      cityColliders.some(
-        (b) =>
-          wp.x > b.minX - 6 &&
-          wp.x < b.maxX + 6 &&
-          wp.z > b.minZ - 8 &&
-          wp.z < b.maxZ + 8 &&
-          wp.y < b.h + 3,
-      )
+      collisions.hit(previous,wp)
     ) {
       result = {
         reason:
           "Building strike. Keep above the skyline and follow the glideslope.",
       };
-      report(true);
+      flight.done=true;flight.crashed=true;impact.trigger(wp);plane.visible=false;
+      const forward=new T.Vector3(Math.sin(flight.heading*Math.PI/180),0,-Math.cos(flight.heading*Math.PI/180)).multiplyScalar(approach==='09'?-1:1);camera.position.copy(previous).addScaledVector(forward,-85).add(new T.Vector3(25,30,0));camera.lookAt(wp);playImpactSound();return;
     }
     if (!flight.done && !flight.ground && flight.y <= 4.5) {
       result = landingVerdict(flight);
@@ -778,7 +764,7 @@ function updateFlight(dt) {
     }
     if (flight.ground && flight.speed < 2) report();
     if (flight.ground && flight.z < -1508) report(true);
-    if (Math.abs(flight.x) > 4000 || flight.z < -2500) report(true);
+
   }
   plane.position.copy(worldPos(flight.x, flight.y, flight.z));
   plane.rotation.order = "YXZ";
@@ -795,18 +781,18 @@ function updateFlight(dt) {
   if (view === 0) {
     camera.position
       .copy(plane.position)
-      .add(new T.Vector3(0, 9, approach === "09" ? -92 : 92));
+      .add(dir.clone().multiplyScalar(-66).add(new T.Vector3(0,15,0)));
     camera.lookAt(
       plane.position
         .clone()
-        .addScaledVector(dir, 130)
+        .addScaledVector(dir, 65)
         .add(new T.Vector3(0, -2, 0)),
     );
     plane.visible = true;
   } else if (view === 1) {
     camera.position
       .copy(plane.position)
-      .add(new T.Vector3(0, 1, approach === "09" ? 12 : -12));
+      .add(dir.clone().multiplyScalar(12).add(new T.Vector3(0,1,0)));
     camera.lookAt(
       plane.position
         .clone()
@@ -815,7 +801,7 @@ function updateFlight(dt) {
     );
     plane.visible = false;
   } else {
-    camera.position.copy(plane.position).add(new T.Vector3(40, 13, 20));
+    camera.position.copy(plane.position).add(new T.Vector3(-dir.z*40,13,dir.x*40)).addScaledVector(dir,-20);
     camera.lookAt(plane.position);
     plane.visible = true;
   }
@@ -969,6 +955,9 @@ window.sim = {
     renderer.render(scene, camera);
   },
   renderer,
+  get camera(){return {position:camera.position.toArray(),direction:camera.getWorldDirection(new T.Vector3()).toArray()};},
+  get impact(){return {age:impact.age,visible:impact.group.visible};},
+  get buildings(){return cityColliders;},
   choose,
   freeze() {
     manual = true;
