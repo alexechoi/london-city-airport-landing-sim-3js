@@ -54,7 +54,7 @@ Netlify uses `netlify.toml`: `npm run build`, publish `dist`. No server, paid ma
 
 ## Demo media
 
-- [Download the 24-second flythrough (MP4)](https://city-landing.alexchoi.xyz/flythrough.mp4)
+- [Original first-build flythrough (before the rendering and aircraft revision)](https://city-landing.alexchoi.xyz/flythrough.mp4)
 - [Live production screenshot](https://city-landing.alexchoi.xyz/screenshots/title.png)
 - [Final approach screenshot](https://city-landing.alexchoi.xyz/screenshots/approach.jpg)
 
@@ -65,3 +65,5 @@ The video is rendered from the actual Three.js scene at 1280×720, 24 fps, H.264
 The renderer uses logarithmic depth for kilometre-scale scenery, separated ground layers, anisotropic facade textures and softer water slopes. Redundant overlapping road surfaces and randomly placed trees were removed. The chase camera follows the aircraft heading with a small side offset; leaving the approach does not end the flight.
 
 `node scripts/check-revision.mjs` checks all four cardinal camera headings on both approaches, flight outside the old boundary, impact effects and retry cleanup, and saves 48 motion frames.
+
+Revision evidence: [chase view](https://city-landing.alexchoi.xyz/screenshots/chase.jpg), [aircraft](https://city-landing.alexchoi.xyz/screenshots/aircraft.png), [building impact](https://city-landing.alexchoi.xyz/screenshots/explosion.png), [camera turn capture](https://city-landing.alexchoi.xyz/camera-check.mp4).
