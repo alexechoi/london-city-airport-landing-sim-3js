@@ -3,6 +3,7 @@ import * as T from "three";
 // the turn direction. The orbit camera keeps the aircraft and landmark in frame.
 export const TOUR_TITLES = ["Banking past the Shard.","Turning over the City.","Above the London Eye.","Across Canary Wharf.","Around the Greenwich Peninsula.","Back to London City."];
 export function cinematicPose(time,sites,approach="09") {
+  time=Math.max(0,Number.isFinite(time)?time:0);
   const segment=Math.floor(time/8)%6,u=(time%8)/8;
   const shots=[
     {site:"shard",radius:330,alt:205,a:-2.6,turn:.95,bank:-39},

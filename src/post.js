@@ -14,13 +14,15 @@ export function createPost(renderer, scene, camera, software = false) {
   composer.renderTarget1.samples = software ? 0 : 4;
   composer.renderTarget2.samples = software ? 0 : 4;
   for (const target of [composer.renderTarget1, composer.renderTarget2]) {
-    target.depthTexture = new T.DepthTexture(1, 1, T.UnsignedIntType);
+    // Reversed-Z needs floating-point depth. Integer depth quantises shallow
+    // ground slopes into terraces and breaks reconstructed contact normals.
+    target.depthTexture = new T.DepthTexture(1, 1, T.FloatType);
   }
   composer.addPass(new RenderPass(scene, camera));
   // Logarithmic-depth fallback requires a different reconstruction. Reverse depth
   // is supported on current desktop/mobile WebGL2 browsers; preserve fallback rendering.
-  if (renderer.capabilities.reversedDepthBuffer)
-    composer.addPass(new ContactOcclusionPass(camera, true));
+  const occlusion=renderer.capabilities.reversedDepthBuffer?new ContactOcclusionPass(camera,true):null;
+  if(occlusion) composer.addPass(occlusion);
   const grade = new ShaderPass({
     uniforms: {
       tDiffuse: { value: null },
@@ -45,6 +47,7 @@ export function createPost(renderer, scene, camera, software = false) {
   composer.addPass(new SMAAPass());
   composer.addPass(new OutputPass());
   return {
+    setOcclusion(enabled) {if(occlusion)occlusion.enabled=enabled;},
     render: () => {
       renderer.info.reset();
       composer.render();

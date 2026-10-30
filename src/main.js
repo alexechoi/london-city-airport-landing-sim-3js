@@ -993,7 +993,7 @@ function render(now) {
     requestAnimationFrame(render);
     return;
   }
-  const dt = Math.min(0.05, (now - last) / 1000);
+  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
   last = now;
   elapsed += dt;
   if (mode === "intro") intro(elapsed);
@@ -1104,6 +1104,7 @@ window.sim = {
   landmarks: cityModels.sites,
   get fogDensity() { return scene.fog.density; },
   vegetationCount,
+  setContactOcclusion(enabled) {post.setOcclusion(enabled);post.render();},
   setShadows(enabled, normalBias = 0.65) {
     renderer.shadowMap.enabled = enabled;
     sunlight.shadow.normalBias = normalBias;

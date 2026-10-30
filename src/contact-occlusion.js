@@ -7,6 +7,7 @@ export class ContactOcclusionPass extends Pass {
   constructor(camera, reversedDepth) {
     super();
     this.aoMaterial=new T.ShaderMaterial({
+      depthTest:false,depthWrite:false,
       uniforms: { tDiffuse: {value:null}, tDepth:{value:null}, inverseProjection:{value:camera.projectionMatrixInverse}, resolution:{value:new T.Vector2()}, reversed:{value:reversedDepth}, projectionScale:{value:1} },
       vertexShader:'varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
       fragmentShader:`
@@ -17,6 +18,9 @@ export class ContactOcclusionPass extends Pass {
       uniform float projectionScale;
       varying vec2 vUv;
       vec3 positionAt(vec2 uv){
+        // Depth uses nearest filtering. Reconstruct at the sampled texel centre,
+        // not at the continuous offset: the mismatch invents occluders on shallow ground.
+        uv=clamp(floor(uv*resolution)+.5,vec2(.5),resolution-.5)/resolution;
         float d=texture2D(tDepth,uv).x;
         vec4 p=inverseProjection*vec4(uv*2.-1.,reversed?d:d*2.-1.,1.);
         return p.xyz/p.w;
@@ -33,7 +37,7 @@ export class ContactOcclusionPass extends Pass {
         vec3 dy=abs(b.z-p.z)<abs(t.z-p.z)?p-b:t-p;
         vec3 n=normalize(cross(dx,dy));
         if(dot(n,-p)<0.)n=-n;
-        float radius=14.;
+        float radius=6.;
         float pixels=clamp(radius*projectionScale/max(-p.z,1.),2.,42.);
         float occlusion=0.;
         for(int i=0;i<24;i++){
@@ -46,7 +50,7 @@ export class ContactOcclusionPass extends Pass {
           float horizon=max(dot(n,delta)/max(d,.001)-.12,0.);
           occlusion+=horizon*(1.-smoothstep(.2,radius,d));
         }
-        float ao=clamp(1.-occlusion/24.*3.2,.57,1.);
+        float ao=clamp(1.-occlusion/24.*2.2,.72,1.);
         // Leave distant haze intact and avoid a dirty outline around aircraft/rooftops.
         ao=mix(ao,1.,smoothstep(1800.,6500.,-p.z));
         gl_FragColor=vec4(ao,-p.z,0.,1.);
@@ -55,6 +59,7 @@ export class ContactOcclusionPass extends Pass {
     this.camera=camera;
     this.target=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType,depthBuffer:false,minFilter:T.NearestFilter,magFilter:T.NearestFilter});
     this.combine=new T.ShaderMaterial({
+      depthTest:false,depthWrite:false,
       uniforms:{ tDiffuse:{value:null}, tAO:{value:this.target.texture}, tDepth:{value:null}, inverseProjection:{value:camera.projectionMatrixInverse}, reversed:{value:reversedDepth}, aoResolution:{value:new T.Vector2()} },
       vertexShader:this.aoMaterial.vertexShader,
       fragmentShader:`
