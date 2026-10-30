@@ -18,6 +18,11 @@ export function addContextCity(scene, data, materials, roof) {
     const group = new T.Group();
     scene.add(group);
     colliders.push(...addCity(group, { buildings }, materials, roof, offset));
+    // Kilometres-away districts need not be redrawn into sub-pixel water reflections.
+    // Layer 1 is visible in the main camera; Water's mirror camera uses layer 0.
+    group.traverse((o) => {
+      if (o.isMesh) o.layers.set(1);
+    });
     offset += buildings.length;
   }
   return colliders;

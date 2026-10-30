@@ -61,6 +61,12 @@ const gl = $("world").getContext("webgl2", {
   powerPreference: "high-performance",
 });
 const supportsReverseDepth = !!gl?.getExtension("EXT_clip_control");
+const debugRenderer = gl?.getExtension("WEBGL_debug_renderer_info");
+const softwareRenderer =
+  debugRenderer &&
+  /swiftshader|llvmpipe|software/i.test(
+    gl.getParameter(debugRenderer.UNMASKED_RENDERER_WEBGL),
+  );
 const renderer = new T.WebGLRenderer({
   canvas: $("world"),
   antialias: true,
@@ -83,7 +89,8 @@ const camera = new T.PerspectiveCamera(
   0.5,
   26000,
 );
-const post = createPost(renderer, scene, camera);
+camera.layers.enable(1);
+const post = createPost(renderer, scene, camera, softwareRenderer);
 const sun = new T.Vector3(-0.431, 0.743, -0.509).normalize();
 window.setLoadingProgress(33, "Loading daylight environment");
 const daylight = await new HDRLoader().loadAsync("/textures/daylight-sky.hdr");
@@ -193,12 +200,12 @@ renderer.setRenderTarget(null);
 const waters = [];
 function water(x, z, w, d, geometry) {
   const o = new Water(geometry || new T.PlaneGeometry(w, d), {
-    textureWidth: 1024,
-    textureHeight: 1024,
+    textureWidth: softwareRenderer ? 512 : 1024,
+    textureHeight: softwareRenderer ? 512 : 1024,
     waterNormals: normals,
     sunDirection: sun,
-    sunColor: 0xffe4bc,
-    waterColor: 0x18383a,
+    sunColor: 0xfff0d9,
+    waterColor: 0x4b5b58,
     distortionScale: 2.4,
     fog: true,
   });
@@ -221,6 +228,10 @@ function water(x, z, w, d, geometry) {
   o.material.fragmentShader = o.material.fragmentShader.replace(
     "reflectionSample + specularLight, reflectance",
     "reflectionSample * 0.42 + specularLight * 0.35, reflectance * 0.7",
+  );
+  o.material.fragmentShader = o.material.fragmentShader.replace(
+    "sunColor * diffuseLight * 0.3 + scatter",
+    "sunColor * diffuseLight * 0.06 + scatter * 1.8",
   );
   scene.add(o);
   waters.push(o);

@@ -7,11 +7,11 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
 // Scene-linear grading adapted from Slop New York's MIT-licensed post-processing.js.
 // Tone mapping and display conversion happen exactly once, in OutputPass.
-export function createPost(renderer, scene, camera) {
+export function createPost(renderer, scene, camera, software = false) {
   const composer = new EffectComposer(renderer);
   renderer.info.autoReset = false;
-  composer.renderTarget1.samples = 4;
-  composer.renderTarget2.samples = 4;
+  composer.renderTarget1.samples = software ? 0 : 4;
+  composer.renderTarget2.samples = software ? 0 : 4;
   composer.addPass(new RenderPass(scene, camera));
   const grade = new ShaderPass({
     uniforms: {
