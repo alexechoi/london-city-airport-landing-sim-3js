@@ -871,7 +871,7 @@ function updateFlight(dt) {
   const ideal = Math.max(0, flight.z) * Math.tan((5.5 * Math.PI) / 180) + 4.5,
     err = flight.y - ideal;
   const runwayBearing = (Math.atan2(-flight.x, flight.z) * 180) / Math.PI;
-  const bearingError = ((runwayBearing - flight.heading + 540) % 360) - 180;
+  const bearingError = (((runwayBearing - flight.heading + 180) % 360 + 360) % 360) - 180;
   const customCue =
     Math.abs(bearingError) < 12
       ? "RUNWAY AHEAD · JOIN FINAL"
@@ -882,7 +882,7 @@ function updateFlight(dt) {
     ? "PAUSED · P TO RESUME"
     : flight.ground
       ? "HOLD SPACE TO BRAKE"
-      : customStart && (flight.z < 0 || Math.abs(flight.x) > 300)
+      : customStart && (flight.z < 0 || Math.abs(flight.x) > 300 || Math.abs(bearingError) > 30)
         ? customCue
         : flight.y < 25
           ? "FLARE · GENTLY RAISE THE NOSE"

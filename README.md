@@ -56,13 +56,15 @@ Netlify uses `netlify.toml`: `npm run build`, publish `dist`. No server, paid ma
 
 ## Demo media
 
-- [Revised 20-second flythrough](https://city-landing.alexchoi.xyz/flythrough.mp4)
-- [Live production screenshot](https://city-landing.alexchoi.xyz/screenshots/title.png)
-- [Final approach screenshot](https://city-landing.alexchoi.xyz/screenshots/approach.jpg)
+- [Revised 20-second flythrough](public/flythrough.mp4)
+- [Title screen](public/screenshots/title.png)
+- [Final approach screenshot](public/screenshots/approach.jpg)
+
+Media links show this branch’s assets; production may run an earlier revision.
 
 The revised video is rendered from the actual Three.js scene at 1280×720, 24 fps, H.264/AAC.
 
-[One Canada Square close-up](https://city-landing.alexchoi.xyz/screenshots/one-canada-square.png) · [Revised skyline](https://city-landing.alexchoi.xyz/screenshots/skyline.jpg)
+[One Canada Square close-up](public/screenshots/one-canada-square.png) · [Revised skyline](public/screenshots/skyline.jpg)
 
 ## Rendering and control fixes
 
@@ -70,11 +72,11 @@ The renderer uses reversed depth where supported, with a logarithmic-depth fallb
 
 `node scripts/check-revision.mjs` checks all four cardinal camera headings on both approaches, flight outside the old boundary, impact effects and retry cleanup, and saves 48 motion frames.
 
-Revision evidence: [chase view](https://city-landing.alexchoi.xyz/screenshots/chase.jpg), [aircraft](https://city-landing.alexchoi.xyz/screenshots/aircraft.png), [building impact](https://city-landing.alexchoi.xyz/screenshots/explosion.png), [camera turn capture](https://city-landing.alexchoi.xyz/camera-check.mp4).
+Revision evidence: [chase view](public/screenshots/chase.jpg), [building impact](public/screenshots/explosion.png), [camera turn capture](public/camera-check.mp4).
 
 ## Architecture and materials
 
-The city uses six authored PBR facade families with recessed frames, blinds, brick and curtain-wall details. Per-building seeds vary tint, window bay widths, storey heights and texture offsets. Curtain walls reflect a static Canary Wharf city probe. Normal, roughness, metalness and occlusion maps share metric UVs; mipmaps and anisotropic filtering reduce distant shimmer. Landmark shaders retain filtered geometric patterns. Residential footprints receive pitched roofs where their shape supports them. Tall buildings have roof parapets, corner trim and plant equipment. One Canada Square’s 205 m body and 30 m pyramid share the same OSM footprint.
+The city uses six authored PBR facade families with recessed frames, blinds, brick and curtain-wall details. Per-building seeds vary tint, window bay widths, storey heights and texture offsets. Curtain walls reflect a static Canary Wharf city probe. Surrounding districts retain brick, stone, industrial and glass material families, including during custom flights. Normal, roughness, metalness and occlusion maps share metric UVs; mipmaps and anisotropic filtering reduce distant shimmer. Landmark shaders retain filtered geometric patterns. Residential footprints receive pitched roofs where their shape supports them. Tall buildings have roof parapets, corner trim and plant equipment. One Canada Square’s 205 m body and 30 m pyramid share the same OSM footprint.
 
 Ground surfaces use separate asphalt, paving, roof and vegetation materials, with world-space wear and filtered joints. Land cover is derived from the attributed aerial reference. Tree placement excludes mapped water, roads and building bounds. The loading overlay remains visible until the aircraft, scenery, textures and first rendered frames are ready; failed loads offer retry.
 
@@ -82,3 +84,5 @@ Ground surfaces use separate asphalt, paving, roof and vegetation materials, wit
 The O2 is modelled as a 365 m tensioned canopy with a 52 m apex, twelve outward-raked 100 m lattice masts, cable stays, a roof walk and cylindrical service towers at their mapped locations. Quay walls, road-aligned cars and buses, and streetlights add scale to the waterfront. References and licensing are in `docs/SOURCES.md`.
 
 For Linux machines with Mesa, the capture script also supports `CAPTURE_ANGLE=gl-egl` with `LIBGL_ALWAYS_SOFTWARE=1 EGL_PLATFORM=surfaceless`. Capture uses full-quality antialiasing; normal play adapts multisampling and reflection resolution on detected software renderers. The video is rendered offline and is not a real-time performance benchmark.
+
+[Custom-start map](public/screenshots/custom-start-desktop.png) · [Mobile map setup](public/screenshots/custom-start-mobile.png) · [Steep banking](public/screenshots/steep-bank.png)

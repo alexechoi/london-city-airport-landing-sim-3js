@@ -2,7 +2,15 @@ import * as T from "three";
 import { addCity } from "./city.js";
 // Geographic cells keep the real surrounding London geometry independently cullable.
 export function addContextCity(scene, data, materials, roof) {
-  materials = materials.map(() => materials[8]);
+  // Keep a small set of shared batches, but retain glass, brick, stone and
+  // industrial identities when a custom flight leaves the central district.
+  materials = materials.map((m, i) =>
+    [0, 5, 6, 10].includes(i) ? materials[6]
+      : i === 2 ? materials[2]
+      : i === 4 ? materials[4]
+      : i === 7 ? materials[7]
+      : materials[8],
+  );
   const cells = new Map();
   for (const b of data.buildings) {
     const p = b[1];

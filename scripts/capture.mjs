@@ -46,6 +46,12 @@ await page.evaluate(async () => {
   sim.freeze();
 });
 await page.evaluate(() => {
+  document.getElementById("menu").click();
+  sim.inspect([-620,390,-2550],[0,0,-600]);
+});
+await page.screenshot({path: "public/screenshots/title.png"});
+await page.evaluate(() => {
+  sim.start("demo");
   sim.renderAt(12);
   document.getElementById("caption").hidden = true;
 });
@@ -99,9 +105,9 @@ const r = spawnSync(
     "-f",
     "lavfi",
     "-i",
-    "sine=frequency=65:sample_rate=44100",
+    "anoisesrc=color=brown:amplitude=0.12:sample_rate=44100",
     "-filter:a",
-    "volume=0.035,afade=t=in:d=1,afade=t=out:st=18:d=2",
+    "highpass=f=60,lowpass=f=900,volume=0.35,afade=t=in:d=1,afade=t=out:st=18:d=2",
     "-c:v",
     "libx264",
     "-crf",
