@@ -391,7 +391,11 @@ cityColliders.push(
   { minX: -313, maxX: -287, minZ: -1853, maxZ: -1827, h: 57 },
 );
 const architectureStats = architecturalDetails(scene, mapData.buildings);
-buildUrbanGround(scene, mapData, parkData);
+buildUrbanGround(
+  scene,
+  { ...mapData, roads: [...mapData.roads, ...contextData.roads] },
+  parkData,
+);
 cityColliders.push(
   ...addContextCity(scene, contextData, buildingMats, cityRoof),
 );

@@ -3,7 +3,9 @@ import * as T from "three";
 export function architecturalDetails(scene, buildings) {
   const trim = [],
     plant = [],
-    caps = [];
+    caps = [],
+    chimneys = [],
+    solar = [];
   const dummy = new T.Object3D();
   function push(list, x, y, z, w, h, d, angle = 0) {
     list.push({ x, y, z, w, h, d, angle });
@@ -14,8 +16,30 @@ export function architecturalDetails(scene, buildings) {
     if (p.length < 3) continue;
     const cx = p.reduce((a, b) => a + b[0], 0) / p.length,
       cz = p.reduce((a, b) => a + b[1], 0) / p.length;
-    if (Math.abs(cx) > 1100 || cz < -7200 || cz > 500) continue;
-    if (/house|terrace/.test(type) && height < 16) continue;
+    if (Math.abs(cx) > 1800 || cz < -7200 || cz > 500) continue;
+    function inside(x, z) {
+      let hit = false;
+      for (let j = 0, k = p.length - 1; j < p.length; k = j++) {
+        const a = p[j],
+          b = p[k];
+        if (
+          a[1] > z != b[1] > z &&
+          x < ((b[0] - a[0]) * (z - a[1])) / (b[1] - a[1]) + a[0]
+        )
+          hit = !hit;
+      }
+      return hit;
+    }
+    let seed = (i + 19) * 17831;
+    const random = () =>
+      (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+    if (/house|terrace/.test(type) && height < 16) {
+      if (inside(cx, cz) && i % 3 !== 0) {
+        push(chimneys, cx, height + 2, cz, 0.7, 4, 0.95);
+        push(caps, cx, height + 4.05, cz, 0.9, 0.18, 1.15);
+      }
+      continue;
+    }
     const tall = height > 45;
     const floorHeight =
       i === 10
@@ -59,30 +83,53 @@ export function architecturalDetails(scene, buildings) {
       w = Math.max(...xs) - Math.min(...xs),
       d = Math.max(...zs) - Math.min(...zs);
     if (w > 14 && d > 14 && height > 8) {
-      push(
-        plant,
-        cx,
-        height + 1,
-        cz,
-        Math.min(5, w * 0.2),
-        2,
-        Math.min(7, d * 0.2),
-      );
-      push(
-        caps,
-        cx,
-        height + 2.1,
-        cz,
-        Math.min(5.4, w * 0.22),
-        0.22,
-        Math.min(7.4, d * 0.22),
-      );
-      if (tall) {
-        push(plant, cx - 3, height + 2, cz + 4, 2, 4, 2);
-        push(trim, cx, height + 7, cz, 0.18, 14, 0.18);
+      const count = tall ? 3 + (i % 4) : 1 + (i % 3);
+      for (let k = 0; k < count; k++) {
+        const x = cx + (random() - 0.5) * w * 0.65,
+          z = cz + (random() - 0.5) * d * 0.65,
+          ww = 2 + random() * 4,
+          dd = 2 + random() * 5,
+          hh = 0.8 + random() * 1.5;
+        if (
+          ![
+            [x - ww / 2, z - dd / 2],
+            [x + ww / 2, z - dd / 2],
+            [x - ww / 2, z + dd / 2],
+            [x + ww / 2, z + dd / 2],
+          ].every(([x, z]) => inside(x, z))
+        )
+          continue;
+        push(plant, x, height + hh / 2, z, ww, hh, dd);
+        push(caps, x, height + hh + 0.1, z, ww + 0.2, 0.2, dd + 0.2);
+        for (let vent = 0; vent < 3; vent++)
+          push(
+            trim,
+            x - ww * 0.3 + vent * ww * 0.3,
+            height + hh + 0.3,
+            z,
+            0.15,
+            0.2,
+            dd * 0.8,
+          );
       }
+      if (tall && inside(cx, cz))
+        push(trim, cx, height + 6, cz, 0.16, 12, 0.16);
+      if (!tall && w * d > 700 && i % 4 === 0)
+        for (let a = -2; a <= 2; a++)
+          for (let b = -1; b <= 1; b++) {
+            const x = cx + a * 3,
+              z = cz + b * 4;
+            if (
+              [
+                [x - 1.3, z - 1.6],
+                [x + 1.3, z + 1.6],
+              ].every(([x, z]) => inside(x, z))
+            )
+              push(solar, x, height + 0.45, z, 2.6, 0.35, 3.2);
+          }
     }
   }
+
   function batch(items, material) {
     const m = new T.InstancedMesh(
       new T.BoxGeometry(1, 1, 1),
@@ -117,5 +164,24 @@ export function architecturalDetails(scene, buildings) {
     }),
   );
   batch(caps, new T.MeshStandardMaterial({ color: 0x999a94, roughness: 0.8 }));
-  return { trim: trim.length, plant: plant.length, parapets: caps.length };
+  batch(
+    chimneys,
+    new T.MeshStandardMaterial({ color: 0x795c47, roughness: 0.95 }),
+  );
+  batch(
+    solar,
+    new T.MeshStandardMaterial({
+      color: 0x19394b,
+      roughness: 0.24,
+      metalness: 0.6,
+      envMapIntensity: 4,
+    }),
+  );
+  return {
+    chimneys: chimneys.length,
+    solar: solar.length,
+    trim: trim.length,
+    plant: plant.length,
+    parapets: caps.length,
+  };
 }

@@ -108,7 +108,7 @@ export function addCity(scene, data, materials, roofMaterial, seedOffset = 0) {
         dz = c[1] - a[1],
         length = Math.hypot(dx, dz);
       if (length < 0.05) continue;
-      const normal = [dz / length, 0, -dx / length],
+      const normal = [-dz / length, 0, dx / length],
         v0 = [a[0], 0, a[1]],
         v1 = [c[0], 0, c[1]],
         v2 = [c[0], h, c[1]],

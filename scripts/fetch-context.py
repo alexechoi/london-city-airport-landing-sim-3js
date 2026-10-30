@@ -20,14 +20,29 @@ def world(x,y,extent,tx,ty):
 def rings(feature,ext,tx,ty):
  g=feature['geometry'];poly=g['coordinates'] if g['type']=='MultiPolygon' else [g['coordinates']] if g['type']=='Polygon' else []
  return [[[world(x,y,ext,tx,ty)for x,y in ring]for ring in p]for p in poly]
-buildings=[];waters=[];parks=[];seen=set()
+buildings=[];waters=[];parks=[];roads=[];seen=set()
 with concurrent.futures.ThreadPoolExecutor(max_workers=5)as pool:
  for i,(tx,ty,data)in enumerate(pool.map(fetch,[(x,y)for x in range(x0,x1+1)for y in range(y0,y1+1)])):
-  for layer in ['building','water','landcover','landuse']:
+  for layer in ['building','water','landcover','landuse','transportation']:
    if layer not in data:continue
    ext=data[layer]['extent']
    for f in data[layer]['features']:
     prop=f['properties'];kind=prop.get('class','');fid=(layer,f.get('id',0))
+    if layer=='transportation':
+     if kind not in ['motorway','trunk','primary','secondary','tertiary','minor','service','residential']:continue
+     g=f['geometry'];lines=[g['coordinates']]if g['type']=='LineString'else g['coordinates']if g['type']=='MultiLineString'else[]
+     for line in lines:
+      ps=[world(x,y,ext,tx,ty)for x,y in line];part=[]
+      for k in range(1,len(ps)):
+       cx=(ps[k-1][0]+ps[k][0])/2;cz=(ps[k-1][1]+ps[k][1])/2;e=cz*math.cos(A)+cx*math.sin(A);n=cx*math.cos(A)-cz*math.sin(A);lon=.06602+e/(111320*math.cos(math.radians(51.505)));lat=51.50494+n/111320
+       if -.037<lon<.097 and 51.4885<lat<51.522:
+        if len(part)>1:roads.append([kind,part])
+        part=[]
+       else:
+        if not part:part=[ps[k-1]]
+        part.append(ps[k])
+      if len(part)>1:roads.append([kind,part])
+     continue
     if layer=='building' and fid[1] and fid in seen:continue
     if layer=='building':seen.add(fid)
     if layer in ['landcover','landuse'] and kind not in ['wood','grass','forest','park','recreation_ground','meadow','grassland','garden']:continue
@@ -37,7 +52,7 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=5)as pool:
      if shape.is_empty:continue
      if layer=='building':
       cx,cz=shape.centroid.coords[0];e=cz*math.cos(A)+cx*math.sin(A);n=cx*math.cos(A)-cz*math.sin(A);lon=.06602+e/(111320*math.cos(math.radians(51.505)));lat=51.50494+n/111320
-      if -.051<lon<.111 and 51.479<lat<51.531:continue
+      if -.037<lon<.097 and 51.4885<lat<51.522:continue
       if prop.get('hide_3d'):continue
       h=max(4,min(310,prop.get('render_height',6)))
       buildings.append([round(h,1),polygon[0],'house' if h<12 else 'yes'])
@@ -48,7 +63,7 @@ def compact(polys,min_area=8,max_distance=None):
  merged=unary_union(polys).simplify(.6,preserve_topology=True)
  items=list(merged.geoms)if hasattr(merged,'geoms')else[merged]
  return [{'outer':[[round(x,1),round(y,1)]for x,y in p.exterior.coords],'holes':[[[round(x,1),round(y,1)]for x,y in r.coords]for r in p.interiors]}for p in items if p.geom_type=='Polygon' and p.area>min_area and (max_distance is None or math.hypot(p.centroid.x,p.centroid.y+3500)<max_distance)]
-json.dump({'buildings':buildings},open(ROOT/'work/context-full.json','w'),separators=(',',':'))
+json.dump({'buildings':buildings,'roads':roads},open(ROOT/'work/context-full.json','w'),separators=(',',':'))
 json.dump(compact(waters),open(ROOT/'public/water.json','w'),separators=(',',':'))
 json.dump(compact(parks,400,10000),open(ROOT/'public/parks.json','w'),separators=(',',':'))
 print('DONE',len(buildings),'context buildings',len(waters),'water polygons',len(parks),'green areas')

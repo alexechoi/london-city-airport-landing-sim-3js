@@ -4,7 +4,7 @@ from shapely.geometry import Polygon
 from shapely.ops import unary_union
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-src=json.load(open(ROOT/'work/context-full.json'))['buildings'];groups=defaultdict(list);out=[]
+full=json.load(open(ROOT/'work/context-full.json'));src=full['buildings'];groups=defaultdict(list);out=[]
 for h,p,t in src:
  cx=sum(v[0]for v in p)/len(p);cz=sum(v[1]for v in p)/len(p)
  if math.hypot(cx,cz+3500)>10500:continue
@@ -22,5 +22,5 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=4)as pool:
  for i,parts in enumerate(pool.map(merge,groups.items())):
   out.extend(parts)
   if i%100==0:print('Groups',i,'buildings',len(out),flush=True)
-json.dump({'buildings':out},open(ROOT/'public/context.json','w'),separators=(',',':'))
+json.dump({'buildings':out,'roads':full['roads']},open(ROOT/'public/context.json','w'),separators=(',',':'))
 print('Reduced',len(src),'to',len(out),'vertices',sum(len(b[1])for b in out))
