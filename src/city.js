@@ -75,41 +75,5 @@ export function addCity(scene, data, materials, roofMaterial) {
   }
   batches.forEach((b, i) => mesh(b, materials[i]));
   mesh(roofs, roofMaterial);
-  const p = [];
-  for (const [type, points] of data.roads) {
-    const w = ["motorway", "trunk"].includes(type)
-      ? 9
-      : ["primary", "secondary"].includes(type)
-        ? 6
-        : 3;
-    for (let i = 1; i < points.length; i++) {
-      const a = points[i - 1],
-        b = points[i],
-        dx = b[0] - a[0],
-        dz = b[1] - a[1],
-        l = Math.hypot(dx, dz) || 1,
-        nx = (dz / l) * w,
-        nz = (-dx / l) * w;
-      const v = [
-        [a[0] + nx, 0.04, a[1] + nz],
-        [b[0] + nx, 0.04, b[1] + nz],
-        [b[0] - nx, 0.04, b[1] - nz],
-        [a[0] - nx, 0.04, a[1] - nz],
-      ];
-      for (const j of [0, 1, 2, 0, 2, 3]) p.push(...v[j]);
-    }
-  }
-  const rg = new T.BufferGeometry();
-  rg.setAttribute("position", new T.Float32BufferAttribute(p, 3));
-  rg.computeVertexNormals();
-  const roadMesh = new T.Mesh(
-    rg,
-    new T.MeshStandardMaterial({
-      color: 0x5d605e,
-      roughness: 0.95,
-      side: T.DoubleSide,
-    }),
-  );
-  // Satellite ground already contains the street network; avoid overlapping ribbons.
   return colliders;
 }

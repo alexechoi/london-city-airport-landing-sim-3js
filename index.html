@@ -20,8 +20,17 @@
       content="https://city-landing.alexchoi.xyz/og.jpg"
     />
     <meta name="twitter:card" content="summary_large_image" />
+    <style>
+#loading{position:fixed;inset:0;z-index:100;background:#101e29;color:#eaf0f2;display:grid;place-items:center;font-family:Arial,sans-serif;transition:opacity .45s}#loading.complete{opacity:0;pointer-events:none}#loading .load-card{width:min(420px,82vw)}#loading small{font-size:10px;letter-spacing:3px;color:#d2ab80}#loading h2{font-size:38px;letter-spacing:-1px;font-weight:400;margin:22px 0 8px}#loading p{font-size:13px;color:#aebdc7;line-height:1.8}#loading .load-track{height:2px;background:#354451;margin:30px 0 16px}#load-fill{height:100%;background:#efc393;width:3%;transition:width .3s}#loading .load-meta{display:flex;justify-content:space-between;font-size:11px;color:#c2d0d7}#load-retry{margin-top:25px;padding:12px 20px;background:#efc393;color:#10202e;border:0;border-radius:3px;cursor:pointer}body.loading>header,body.loading>main,body.loading>footer,body.loading>#location{visibility:hidden}@media(prefers-reduced-motion:reduce){#loading,#load-fill{transition:none}}
+    </style>
   </head>
-  <body>
+  <body class="loading">
+    <section id="loading" aria-label="Loading simulator" role="status" aria-live="polite"><div class="load-card"><small>LCY / FINAL APPROACH</small><h2>Preparing London.</h2><p>Your approach over Canary Wharf is almost ready.</p><div class="load-track" role="progressbar" aria-label="Loading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="3"><div id="load-fill"></div></div><div class="load-meta"><span id="load-stage">Starting the simulator</span><span id="load-percent">3%</span></div><button id="load-retry" hidden onclick="location.reload()">Try again</button></div></section>
+    <script>
+window.setLoadingProgress=function(value,label){const el=document.getElementById('loading');if(el.dataset.failed)return;value=Math.max(value,Number(el.dataset.progress||0));el.dataset.progress=value;document.getElementById('load-fill').style.width=value+'%';document.getElementById('load-percent').textContent=value+'%';document.getElementById('load-stage').textContent=label;el.querySelector('[role=progressbar]').setAttribute('aria-valuenow',value);};
+window.loadingFailed=function(){const el=document.getElementById('loading');if(el.hidden)return;el.dataset.failed='true';el.querySelector('h2').textContent='Unable to start.';document.getElementById('load-stage').textContent='Check your connection and WebGL support, then retry.';document.getElementById('load-retry').hidden=false;};
+addEventListener('error',window.loadingFailed);addEventListener('unhandledrejection',window.loadingFailed);
+    </script>
     <canvas id="world"></canvas>
     <div id="vignette"></div>
     <header>

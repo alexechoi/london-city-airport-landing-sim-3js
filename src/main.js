@@ -1,12 +1,21 @@
 import "./style.css";
 import { Impact } from "./impact.js";
 import { collisionIndex } from "./collision.js";
+import { architecturalDetails } from "./architecture.js";
 import { addCity } from "./city.js";
+window.setLoadingProgress(8,"Loading London map data");
 const [mapData, waterData] = await Promise.all([
   fetch("/london.json").then((r) => r.json()),
   fetch("/water.json").then((r) => r.json()),
 ]);
+window.setLoadingProgress(30,"Constructing the airport and skyline");
+await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
 import * as T from "three";
+let texturesReady=false, renderedFrames=0;
+T.DefaultLoadingManager.onProgress=(url,loaded,total)=>window.setLoadingProgress(Math.min(94,70+Math.round(loaded/total*24)),"Loading surface textures");
+T.DefaultLoadingManager.onLoad=()=>{texturesReady=true;};
+T.DefaultLoadingManager.onError=()=>window.loadingFailed();
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Sky } from "three/addons/objects/Sky.js";
 import { Water } from "three/addons/objects/Water.js";
 import {
@@ -230,6 +239,7 @@ function water(x, z, w, d, geometry) {
     `vec4 getNoise(vec2 uv){vec2 slope=texture2D(uSlope0,uv/600.0).xy+texture2D(uSlope1,uv/85.0).xy+texture2D(uSlope2,uv/12.0).xy; slope*=0.35;return vec4(-slope.x,-slope.y,1.0,1.0);}
 ` +
     o.material.fragmentShader.slice(en);
+  o.material.fragmentShader=o.material.fragmentShader.replace('reflectionSample + specularLight, reflectance','reflectionSample * 0.42 + specularLight * 0.35, reflectance * 0.7');
   scene.add(o);
   waters.push(o);
   return o;
@@ -424,17 +434,22 @@ const buildingMats = [0, 1, 2, 1, 2].map(
   (style) =>
     new T.MeshStandardMaterial({
       map: facadeMap(style),
-      color: 0xffffff,
-      roughness: style === 0 ? 0.28 : 0.85,
+      color: style===0?0x99b2c2:style===1?0xb6a18e:0xc5c7c1,
+      roughness: style === 0 ? 0.2 : 0.85,
       metalness: style === 0 ? 0.35 : 0,
       side: T.DoubleSide,
     }),
 );
-const cityColliders = addCity(scene, mapData, buildingMats, concrete);
+window.setLoadingProgress(55,"Building London architecture");
+await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+for(const material of buildingMats){material.onBeforeCompile=shader=>{shader.vertexShader='varying float vBuildingHeight;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvBuildingHeight=position.y;');shader.fragmentShader='varying float vBuildingHeight;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\ndiffuseColor.rgb *= mix(0.58,1.0,smoothstep(0.0,18.0,vBuildingHeight));');};}
+const cityRoof=mat(0x777e7e,.91,.05);cityRoof.map=photo('concrete',1);
+const cityColliders = addCity(scene, mapData, buildingMats, cityRoof);
 cityColliders.push(
   { minX: -288, maxX: -218, minZ: -1735, maxZ: -1165, h: 21 },
   { minX: -313, maxX: -287, minZ: -1853, maxZ: -1827, h: 57 },
 );
+const architectureStats=architecturalDetails(scene,mapData.buildings);
 const collisions = collisionIndex(cityColliders);
 const impact = new Impact(scene);
 // Canary Wharf, positioned west of the airport; One Canada Square's pyramid.
@@ -482,259 +497,13 @@ for (let i = 0; i < 650; i++) {
   trees.setMatrixAt(i, td.matrix);
 }
 // Random trees removed: they intersected water and buildings.
-function aircraft() {
-  const a = new T.Group(),
-    paint = mat(0xe2e3db, 0.34, 0.25),
-    blue = mat(0x1b3349, 0.4, 0.3);
-  // Continuous E190 fuselage: pointed radome, cylindrical cabin, tapered tailcone.
-  const profile = [
-    [-18.1, 0.06],
-    [-17.7, 0.55],
-    [-16.9, 1.1],
-    [-15.5, 1.5],
-    [-13.8, 1.65],
-    [9.8, 1.65],
-    [12, 1.42],
-    [14, 1.05],
-    [16, 0.55],
-    [18.1, 0.08],
-  ];
-  const samples = [];
-  for (let j = 0; j < profile.length - 1; j++)
-    for (let k = 0; k < 8; k++) {
-      const t = k / 8,
-        u = t * t * (3 - 2 * t);
-      samples.push(
-        new T.Vector2(
-          T.MathUtils.lerp(profile[j][1], profile[j + 1][1], u),
-          T.MathUtils.lerp(profile[j][0], profile[j + 1][0], t),
-        ),
-      );
-    }
-  samples.push(new T.Vector2(0.08, 18.1));
-  const fusGeo = new T.LatheGeometry(samples, 64);
-  fusGeo.rotateX(Math.PI / 2);
-  // Lathe Y becomes Z; build with a sharp navy/white boundary.
-  const colours = [];
-  for (let i = 0; i < fusGeo.attributes.position.count; i++) {
-    const c = new T.Color(
-      fusGeo.attributes.position.getY(i) < -0.45 ? 0x071e42 : 0xf3f5f5,
-    );
-    colours.push(c.r, c.g, c.b);
-  }
-  fusGeo.setAttribute("color", new T.Float32BufferAttribute(colours, 3));
-  const skin = new T.MeshStandardMaterial({
-    vertexColors: true,
-    roughness: 0.3,
-    metalness: 0.18,
-  });
-  a.add(new T.Mesh(fusGeo, skin));
-  function wing(points, m) {
-    const shape = new T.Shape();
-    points.forEach(([x, z], i) =>
-      i ? shape.lineTo(x, z) : shape.moveTo(x, z),
-    );
-    const o = new T.Mesh(
-      new T.ExtrudeGeometry(shape, { depth: 0.15, bevelEnabled: false }),
-      m,
-    );
-    o.rotation.x = Math.PI / 2;
-    a.add(o);
-    return o;
-  }
-  wing(
-    [
-      [-1, -2],
-      [-14, 5],
-      [-14, 7],
-      [-1, 3],
-      [1, 3],
-      [14, 7],
-      [14, 5],
-      [1, -2],
-    ],
-    paint,
-  );
-  wing(
-    [
-      [-1, 12],
-      [-5, 15],
-      [-5, 16],
-      [5, 16],
-      [5, 15],
-      [1, 12],
-    ],
-    paint,
-  );
-  const tailCanvas = document.createElement("canvas");
-  tailCanvas.width = tailCanvas.height = 512;
-  const tg = tailCanvas.getContext("2d");
-  tg.fillStyle = "#10264c";
-  tg.fillRect(0, 0, 512, 512);
-  tg.strokeStyle = "#f4f2ec";
-  tg.lineWidth = 95;
-  tg.beginPath();
-  tg.moveTo(-80, 500);
-  tg.bezierCurveTo(90, 490, 320, 180, 540, -30);
-  tg.stroke();
-  tg.strokeStyle = "#c62036";
-  tg.lineWidth = 47;
-  tg.beginPath();
-  tg.moveTo(-40, 510);
-  tg.bezierCurveTo(160, 400, 300, 130, 550, 0);
-  tg.stroke();
-  tg.strokeStyle = "#f4f2ec";
-  tg.lineWidth = 55;
-  tg.beginPath();
-  tg.moveTo(10, -30);
-  tg.lineTo(512, 440);
-  tg.stroke();
-  tg.strokeStyle = "#c62036";
-  tg.lineWidth = 22;
-  tg.stroke();
-  const tailMat = new T.MeshStandardMaterial({
-    map: new T.CanvasTexture(tailCanvas),
-    side: T.DoubleSide,
-    roughness: 0.55,
-  });
-  const finGeo = new T.BufferGeometry();
-  finGeo.setAttribute(
-    "position",
-    new T.Float32BufferAttribute(
-      [0, 1, 10, 0, 7.5, 14, 0, 7.5, 16, 0, 1, 16],
-      3,
-    ),
-  );
-  finGeo.setAttribute(
-    "uv",
-    new T.Float32BufferAttribute([0, 0, 0, 1, 1, 1, 1, 0], 2),
-  );
-  finGeo.setIndex([0, 1, 2, 0, 2, 3]);
-  finGeo.computeVertexNormals();
-  for (const side of [-1, 1]) {
-    const fin = new T.Mesh(finGeo, tailMat);
-    fin.position.x = side * 0.09;
-    a.add(fin);
-  }
-  const finEdge = new T.Mesh(new T.CylinderGeometry(0.1, 0.18, 7.6, 12), blue);
-  finEdge.position.set(0, 4.2, 12);
-  finEdge.rotation.x = 0.55;
-  a.add(finEdge);
-  const titlesCanvas = document.createElement("canvas");
-  titlesCanvas.width = 2048;
-  titlesCanvas.height = 256;
-  const cg = titlesCanvas.getContext("2d");
-  cg.fillStyle = "#14294b";
-  cg.font = "bold 115px Georgia";
-  cg.textAlign = "center";
-  cg.fillText("BRITISH AIRWAYS", 1024, 130);
-  cg.fillStyle = "#be2638";
-  cg.beginPath();
-  cg.moveTo(1760, 50);
-  cg.quadraticCurveTo(1960, -20, 1880, 130);
-  cg.quadraticCurveTo(1930, 30, 1760, 50);
-  cg.fill();
-  cg.font = "40px Arial";
-  cg.fillText("G-LCYD    EMBRAER 190", 1050, 218);
-  const titleMat = new T.MeshBasicMaterial({
-    map: new T.CanvasTexture(titlesCanvas),
-    transparent: true,
-    side: T.DoubleSide,
-    depthWrite: false,
-  });
-  for (const x of [-1.66, 1.66]) {
-    const titleMesh = new T.Mesh(new T.PlaneGeometry(12, 1.5), titleMat);
-    titleMesh.rotation.y = x < 0 ? -Math.PI / 2 : Math.PI / 2;
-    titleMesh.position.set(x, 0.65, -6);
-    a.add(titleMesh);
-  }
-
-  for (const x of [-14, 14]) {
-    const tip = box(x, 0.6, 6, 0.15, 1.5, 2, blue, a);
-    tip.rotation.z = x < 0 ? 0.25 : -0.25;
-  }
-  for (const x of [-5, 5]) {
-    const eng = new T.Mesh(
-      new T.CylinderGeometry(1.05, 0.85, 4, 40, 1, true),
-      paint,
-    );
-    eng.rotation.x = Math.PI / 2;
-    eng.position.set(x, -1.2, 2);
-    a.add(eng);
-    const exhaust = new T.Mesh(
-      new T.CircleGeometry(0.8, 40),
-      mat(0x080d13, 0.9, 0),
-    );
-    exhaust.position.set(x, -1.2, 4.03);
-    a.add(exhaust);
-    const intake = new T.Mesh(new T.CircleGeometry(0.94, 40), dark);
-    intake.rotation.y = Math.PI;
-    intake.position.set(x, -1.2, 0.1);
-    a.add(intake);
-    const rim = new T.Mesh(
-      new T.TorusGeometry(0.98, 0.075, 12, 48),
-      mat(0xb6bec3, 0.22, 0.8),
-    );
-    rim.position.set(x, -1.2, -0.08);
-    a.add(rim);
-    for (let i = 0; i < 16; i++) {
-      const blade = box(
-        x,
-        -1.2,
-        -0.065,
-        0.045,
-        1.28,
-        0.03,
-        mat(0x394149, 0.5, 0.65),
-        a,
-      );
-      blade.rotation.z = (i * Math.PI) / 16;
-    }
-  }
-  for (const x of [-1.67, 1.67])
-    for (let z = -8; z < 9; z += 1.4) {
-      const windowMesh = new T.Mesh(new T.SphereGeometry(1, 10, 8), dark);
-      windowMesh.scale.set(0.045, 0.26, 0.18);
-      windowMesh.position.set(x, 0.32, z);
-      a.add(windowMesh);
-    }
-  for (const side of [-1, 1]) {
-    const cockpit = new T.Mesh(
-      new T.PlaneGeometry(2.1, 0.65),
-      new T.MeshStandardMaterial({
-        color: 0x132a3a,
-        roughness: 0.14,
-        metalness: 0.5,
-      }),
-    );
-    cockpit.position.set(side * 0.89, 0.75, -15.65);
-    cockpit.rotation.y = side * 0.65;
-    cockpit.rotation.x = 0.12;
-    a.add(cockpit);
-  }
-
-  const windshield = new T.Mesh(
-    new T.PlaneGeometry(1.65, 0.6),
-    new T.MeshStandardMaterial({
-      color: 0x07131e,
-      roughness: 0.1,
-      metalness: 0.2,
-      side: T.DoubleSide,
-    }),
-  );
-  windshield.position.set(0, 0.9, -16.35);
-  windshield.rotation.x = -0.5;
-  a.add(windshield);
-  for (const x of [-1, 1])
-    for (const z of [-7, 4]) {
-      box(x, -2, z, 0.15, 2, 0.15, dark, a);
-      const wheel = new T.Mesh(new T.CylinderGeometry(0.4, 0.4, 0.3, 12), dark);
-      wheel.rotation.z = Math.PI / 2;
-      wheel.position.set(x, -3, z);
-      a.add(wheel);
-    }
-  return a;
-}
+window.setLoadingProgress(72,"Loading the Embraer 190 model");
+const aircraftAsset=await new GLTFLoader().loadAsync('/models/e190.glb');
+const aircraftTemplate=aircraftAsset.scene;
+const assetBounds=new T.Box3().setFromObject(aircraftTemplate);
+aircraftTemplate.position.set(-(assetBounds.min.x+assetBounds.max.x)/2,-3.4-assetBounds.min.y,-(assetBounds.min.z+assetBounds.max.z)/2);
+aircraftTemplate.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;if(o.material){o.material.envMapIntensity=.5;if(o.material.map)o.material.map.anisotropy=renderer.capabilities.getMaxAnisotropy();}}});
+function aircraft(){const group=new T.Group();group.add(aircraftTemplate.clone(true));return group;}
 const plane = aircraft();
 scene.add(plane);
 for (let i = 0; i < 7; i++) {
@@ -1156,7 +925,8 @@ function render(now) {
     );
   }
   renderer.render(scene, camera);
-  window.__ready = true;
+  renderedFrames++;
+  if(texturesReady&&renderedFrames>2&&!window.__ready&&!document.getElementById('loading').dataset.failed){window.__ready=true;window.setLoadingProgress(100,"Ready for departure");document.body.classList.remove('loading');document.getElementById('loading').classList.add('complete');setTimeout(()=>document.getElementById('loading').hidden=true,500);}
   requestAnimationFrame(render);
 }
 requestAnimationFrame(render);
@@ -1188,6 +958,7 @@ window.sim = {
     renderer.render(scene, camera);
   },
   renderer,
+  architectureStats,
   get camera() {
     return {
       position: camera.position.toArray(),
