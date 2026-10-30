@@ -12,6 +12,7 @@ export function architecturalDetails(scene, buildings) {
   }
   for (let i = 0; i < buildings.length; i++) {
     const [height, raw, type] = buildings[i];
+    if (buildings[i][4] === "o2-service" || i === 10) continue;
     const p = raw.slice(0, -1);
     if (p.length < 3) continue;
     const cx = p.reduce((a, b) => a + b[0], 0) / p.length,

@@ -185,7 +185,7 @@ export function surfaceMaterial(kind = "paving", landcover = null) {
     vec2 p=vGround.xz;float footprint=length(fwidth(p));
     float broad=noiseCity(p*.075),medium=noiseCity(p*.75),fine=mix(.5,noiseCity(p*18.),1.-smoothstep(.03,.12,footprint));
     float damp=smoothstep(.58,.83,noiseCity(p*.21));
-    vec3 base=${road ? "mix(vec3(.055,.064,.073),vec3(.105,.113,.12),medium*.4+broad*.4+fine*.2)" : roof ? "mix(vec3(.15,.16,.17),vec3(.18,.19,.20),broad)" : terrain ? "mix(vec3(.21,.23,.20),vec3(.29,.30,.27),broad)" : "mix(vec3(.29,.285,.27),vec3(.34,.33,.31),broad*.5+medium*.5)"};
+    vec3 base=${road ? "mix(vec3(.055,.064,.073),vec3(.105,.113,.12),medium*.4+broad*.4+fine*.2)" : roof ? "mix(vec3(.17,.18,.19),vec3(.18,.19,.20),fine)" : terrain ? "mix(vec3(.21,.23,.20),vec3(.29,.30,.27),broad)" : "mix(vec3(.29,.285,.27),vec3(.34,.33,.31),broad*.5+medium*.5)"};
     float seam=max(band(p.x,${roof ? "4." : ".9"},.012),band(p.y,${roof ? "4." : ".6"},.012));
     ${road ? `float repairMask=pulse(fract(p.x/9.),.15,.8,fwidth(p.x/9.))*pulse(fract(p.y/11.),.2,.7,fwidth(p.y/11.))*step(.7,hashCity(floor(p/vec2(9.,11.))));base*=1.-repairMask*.25;` : terrain ? "" : `base*=1.-seam*.28;`}
     ${
@@ -201,7 +201,7 @@ export function surfaceMaterial(kind = "paving", landcover = null) {
     }
 ${roof ? `base*=.78+hashCity(vec2(vRoofSeed,17.))*.44;` : ""}
 ${floorPhoto ? `vec3 photographed=texture2D(floorPhoto,p/${kind === "road" ? "5." : "4."}).rgb;base=mix(base,photographed*${kind === "roof" ? ".72" : ".8"},${kind === "road" ? ".5" : kind === "roof" ? ".75*vRoofSlope" : ".75"});` : ""}
-    base*=mix(.93,1.06,fine)*(1.-damp*.14);
+    base*=mix(.97,1.03,fine)*(1.-damp*${roof ? ".015" : ".08"});
     ${road ? `float lineWidth=max(fwidth(vRoadUV.y),.001);float centre=clamp((.11-abs(vRoadUV.y))/lineWidth+.5,0.,1.)*min(1.,.11/lineWidth);float dash=pulse(fract(vRoadUV.x/9.),0.,.33,fwidth(vRoadUV.x/9.));base=mix(base,vec3(.62,.60,.52),centre*dash*vRoadUV.z*.75);` : ""}
 ${kind === "park" ? `base=mix(vec3(.07,.12,.035),vec3(.14,.20,.075),medium*.5+broad*.5);base*=.8+.5*dot(photographed,vec3(.333));` : ""}
     diffuseColor.rgb*=base;

@@ -40,3 +40,7 @@ Wikimedia photographs were inspected as reference only and are not bundled:
 - One Canada Square: https://commons.wikimedia.org/wiki/File:London_MMB_S6_Canary_Wharf.jpg — pale facade panels, paired window bays, roof collar and ribbed pyramid.
 - HSBC: https://commons.wikimedia.org/wiki/File:HSBC_Tower_-_September_2012.JPG — reflective blue glazing, floor bands and upper-facade signage.
 Landmark signs and the Newfoundland structural lattice are modelled approximations.
+
+### Millennium Dome / The O2 architectural reference
+
+The hand-built model in `src/o2.js` uses the documented 365 m diameter, 52 m canopy apex and twelve 100 m masts. The shallow membrane, outward-raked lattice columns, cable fan, rooftop walkway and cylindrical service towers were studied against [Wikimedia: O2 Arena (9499773307)](https://commons.wikimedia.org/wiki/File:O2_Arena_(9499773307).jpg) and the [RSHP Millennium Dome project](https://rshp.com/projects/culture-and-leisure/millennium-dome/). Reference photographs are not included in the shipped assets. The model is an approximation, not a surveyed reconstruction.

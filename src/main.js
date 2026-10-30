@@ -1,4 +1,5 @@
 import "./style.css";
+import { buildO2 } from "./o2.js";
 import { addLandmarkDetails } from "./landmarks.js";
 import { mergeStaticMeshes } from "./batching.js";
 import { Impact } from "./impact.js";
@@ -384,6 +385,14 @@ window.setLoadingProgress(55, "Building London architecture");
 await new Promise((resolve) =>
   requestAnimationFrame(() => requestAnimationFrame(resolve)),
 );
+// Replace the generic extrusions of O2 service towers with their cylindrical architecture.
+const o2Services = mapData.buildings.filter((b, i) => {
+  if (i >= 508 && i <= 519) {
+    b[4] = "o2-service";
+    return true;
+  }
+  return false;
+});
 const cityRoof = surfaceMaterial("roof");
 const cityColliders = addCity(scene, mapData, buildingMats, cityRoof);
 cityColliders.push(
@@ -406,7 +415,7 @@ cityColliders.push({
   maxX: o2Collision.x + 180,
   minZ: o2Collision.z - 180,
   maxZ: o2Collision.z + 180,
-  h: 42,
+  h: 52,
 });
 const collisions = collisionIndex(cityColliders);
 const vegetationCount = await addVegetation(
@@ -463,28 +472,8 @@ cityColliders.push({
   maxZ: canadaZ + crownWidth / 2,
   h: 235,
 });
-// O2 dome and its twelve yellow masts, south-west across the Thames.
-const dome = new T.Mesh(
-  new T.SphereGeometry(180, 48, 16, 0, Math.PI * 2, 0, Math.PI / 2),
-  white,
-);
-dome.scale.y = 0.23;
 const o2 = geo(0.0032, 51.503);
-dome.position.copy(o2);
-scene.add(dome);
-for (let i = 0; i < 12; i++) {
-  const a = (i * Math.PI) / 6,
-    x = o2.x + Math.cos(a) * 140,
-    z = o2.z + Math.sin(a) * 140;
-  cylinder(1, 1.4, 87, yellow, x, 43, z);
-  line(
-    [
-      [x, 86, z],
-      [o2.x, 38, o2.z],
-    ],
-    0xd6cfba,
-  );
-}
+const o2Stats = buildO2(scene, o2, o2Services);
 window.setLoadingProgress(72, "Loading the Embraer 190 model");
 const aircraftAsset = await new GLTFLoader().loadAsync("/models/e190.glb");
 const aircraftParts = [];
@@ -986,6 +975,7 @@ window.sim = {
   },
   renderer,
   architectureStats,
+  o2Stats,
   vegetationCount,
   setShadows(enabled, normalBias = 0.65) {
     renderer.shadowMap.enabled = enabled;

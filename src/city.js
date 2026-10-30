@@ -17,7 +17,7 @@ export function addCity(scene, data, materials, roofMaterial, seedOffset = 0) {
   }
   for (let index = 0; index < data.buildings.length; index++) {
     const [height, poly, type] = data.buildings[index];
-    if (poly.length < 4) continue;
+    if (poly.length < 4 || data.buildings[index][4] === "o2-service") continue;
     const h = Math.min(310, height),
       b =
         batches[
