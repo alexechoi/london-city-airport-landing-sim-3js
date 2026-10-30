@@ -51,3 +51,11 @@ Real London OSM footprints and roads, batched textured facades and roofs, metric
 See [sources and licenses](docs/SOURCES.md). Application: Apache-2.0. OSM-derived databases: ODbL. Vendored Ultra-Water: MIT. Photographic textures: CC0. This is an independent entertainment project.
 
 Netlify uses `netlify.toml`: `npm run build`, publish `dist`. No server, paid map service or runtime secrets are required.
+
+## Demo media
+
+- [Download the 24-second flythrough (MP4)](https://city-landing.alexchoi.xyz/flythrough.mp4)
+- [Live production screenshot](https://city-landing.alexchoi.xyz/screenshots/title.png)
+- [Final approach screenshot](https://city-landing.alexchoi.xyz/screenshots/approach.jpg)
+
+The video is rendered from the actual Three.js scene at 1280×720, 24 fps, H.264/AAC.

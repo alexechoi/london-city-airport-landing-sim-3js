@@ -1,4 +1,66 @@
-import {chromium} from 'playwright';import assert from 'node:assert/strict';import {mkdir} from 'node:fs/promises';
-await mkdir('work/screenshots',{recursive:true});const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});const page=await browser.newPage({viewport:{width:1280,height:720}});const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});await page.goto(process.env.SITE_URL||'http://localhost:5173');await page.waitForFunction(()=>window.__ready,null,{timeout:180000});await page.evaluate(()=>sim.freeze());await page.screenshot({path:'work/screenshots/03-title.png'});assert.equal(await page.locator('#runway-number').textContent(),'09');await page.click('#fly');await page.evaluate(()=>sim.advance(0));await page.screenshot({path:'work/screenshots/04-west-approach.png'});
-for(const approach of ['09','27']){await page.evaluate(a=>{sim.choose(a);sim.start('fly');sim.setFlight({x:0,y:4.4,z:-220,pitch:-1,bank:0,speed:125});sim.advance(.01);},approach);assert.equal(await page.evaluate(()=>sim.flight.ground),true);await page.evaluate(()=>{for(let i=0;i<650;i++)sim.advance(1/60,{' ':true});});assert.equal(await page.locator('#result-title').textContent(),'Welcome to London.');assert.equal(await page.locator('#result').isVisible(),true);}
-await page.evaluate(()=>{sim.start('fly');sim.setFlight({x:80,y:4.4,z:-220,pitch:-1,speed:125});sim.advance(.01);});assert.equal(await page.locator('#result-title').textContent(),'Approach missed.');await page.click('#again');assert.equal(await page.locator('#result').isVisible(),false);await page.click('#menu');await page.click('#demo');await page.evaluate(()=>sim.renderAt(23));await page.screenshot({path:'work/screenshots/05-final.png'});await page.keyboard.press('Escape');await page.setViewportSize({width:390,height:844});await page.screenshot({path:'work/screenshots/06-mobile.png'});assert.deepEqual(errors,[]);console.log('PASS: both approaches, touchdown, braking, crash, retry, demo, mobile; no browser errors.');await browser.close();
+import { chromium } from "playwright";
+import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
+await mkdir("work/screenshots", { recursive: true });
+const browser = await chromium.launch({
+  executablePath: process.env.CHROMIUM_PATH || "/usr/bin/chromium",
+  args: [
+    "--no-sandbox",
+    "--use-angle=swiftshader",
+    "--enable-unsafe-swiftshader",
+  ],
+});
+const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+const errors = [];
+page.on("pageerror", (e) => errors.push(e.message));
+page.on("console", (m) => {
+  if (m.type() === "error") errors.push(m.text());
+});
+await page.goto(process.env.SITE_URL || "http://localhost:5173");
+await page.waitForFunction(() => window.__ready, null, { timeout: 180000 });
+await page.evaluate(() => sim.freeze());
+await page.screenshot({ path: "work/screenshots/03-title.png" });
+assert.equal(await page.locator("#runway-number").textContent(), "09");
+await page.click("#fly");
+await page.evaluate(() => sim.advance(0));
+await page.screenshot({ path: "work/screenshots/04-west-approach.png" });
+for (const approach of ["09", "27"]) {
+  await page.evaluate((a) => {
+    sim.choose(a);
+    sim.start("fly");
+    sim.setFlight({ x: 0, y: 4.4, z: -220, pitch: -1, bank: 0, speed: 125 });
+    sim.advance(0.01);
+  }, approach);
+  assert.equal(await page.evaluate(() => sim.flight.ground), true);
+  await page.evaluate(() => {
+    for (let i = 0; i < 650; i++) sim.advance(1 / 60, { " ": true });
+  });
+  assert.equal(
+    await page.locator("#result-title").textContent(),
+    "Welcome to London.",
+  );
+  assert.equal(await page.locator("#result").isVisible(), true);
+}
+await page.evaluate(() => {
+  sim.start("fly");
+  sim.setFlight({ x: 80, y: 4.4, z: -220, pitch: -1, speed: 125 });
+  sim.advance(0.01);
+});
+assert.equal(
+  await page.locator("#result-title").textContent(),
+  "Approach missed.",
+);
+await page.click("#again");
+assert.equal(await page.locator("#result").isVisible(), false);
+await page.click("#menu");
+await page.click("#demo");
+await page.evaluate(() => sim.renderAt(23));
+await page.screenshot({ path: "work/screenshots/05-final.png" });
+await page.keyboard.press("Escape");
+await page.setViewportSize({ width: 390, height: 844 });
+await page.screenshot({ path: "work/screenshots/06-mobile.png" });
+assert.deepEqual(errors, []);
+console.log(
+  "PASS: both approaches, touchdown, braking, crash, retry, demo, mobile; no browser errors.",
+);
+await browser.close();
