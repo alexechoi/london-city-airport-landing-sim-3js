@@ -28,3 +28,6 @@ Downloaded 1K diffuse JPEGs from https://dl.polyhaven.org/file/ph-assets/Texture
 Procedural British Airways CityFlyer-inspired Embraer 190, approximate dimensions, blue belly, titles, registration and stylised Union flag tail. Brand names identify the depicted aircraft; no affiliation or endorsement. Flight dynamics are deliberately simplified. This is an entertainment demo, not flight training or a navigation tool.
 
 Fonts: DM Sans and Manrope via Google Fonts, SIL Open Font License. System sans fallback is available offline.
+
+## Satellite ground
+Sentinel-2 cloudless 2024 by EOX IT Services GmbH, CC BY 4.0: https://s2maps.eu/ . Contains modified Copernicus Sentinel data 2024. Source WMS: https://tiles.maps.eox.at/wms , layer s2cloudless-2024. Cropped to 0.05°W–0.11°E, 51.48–51.53°N, resampled to 4096×2048 and rotated into the local frame at runtime. This is a regional ground colour reference, not high-resolution photogrammetry.
