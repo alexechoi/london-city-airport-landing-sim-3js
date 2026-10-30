@@ -11,7 +11,9 @@ const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || "/usr/bin/chromium",
   args: [
     "--no-sandbox",
-    "--use-angle=swiftshader",
+    "--use-gl=angle",
+    "--use-angle=" + (process.env.CAPTURE_ANGLE || "swiftshader"),
+    "--ignore-gpu-blocklist",
     "--enable-unsafe-swiftshader",
   ],
 });
@@ -24,7 +26,9 @@ page.on("pageerror", (e) => errors.push(e.message));
 page.on("console", (m) => {
   if (m.type() === "error") errors.push(m.text());
 });
-await page.goto((process.env.SITE_URL || "http://localhost:5173") + "/?demo");
+await page.goto(
+  (process.env.SITE_URL || "http://localhost:5173") + "/?demo&capture",
+);
 await page.waitForFunction(
   () => {
     if (window.__ready) {

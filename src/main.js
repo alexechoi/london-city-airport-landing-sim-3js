@@ -67,6 +67,8 @@ const softwareRenderer =
   /swiftshader|llvmpipe|software/i.test(
     gl.getParameter(debugRenderer.UNMASKED_RENDERER_WEBGL),
   );
+const conserveResources =
+  softwareRenderer && !new URLSearchParams(location.search).has("capture");
 const renderer = new T.WebGLRenderer({
   canvas: $("world"),
   antialias: true,
@@ -90,7 +92,7 @@ const camera = new T.PerspectiveCamera(
   26000,
 );
 camera.layers.enable(1);
-const post = createPost(renderer, scene, camera, softwareRenderer);
+const post = createPost(renderer, scene, camera, conserveResources);
 const sun = new T.Vector3(-0.431, 0.743, -0.509).normalize();
 window.setLoadingProgress(33, "Loading daylight environment");
 const daylight = await new HDRLoader().loadAsync("/textures/daylight-sky.hdr");
@@ -200,8 +202,8 @@ renderer.setRenderTarget(null);
 const waters = [];
 function water(x, z, w, d, geometry) {
   const o = new Water(geometry || new T.PlaneGeometry(w, d), {
-    textureWidth: softwareRenderer ? 512 : 1024,
-    textureHeight: softwareRenderer ? 512 : 1024,
+    textureWidth: conserveResources ? 512 : 1024,
+    textureHeight: conserveResources ? 512 : 1024,
     waterNormals: normals,
     sunDirection: sun,
     sunColor: 0xfff0d9,

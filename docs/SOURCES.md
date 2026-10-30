@@ -48,3 +48,5 @@ The hand-built model in `src/o2.js` uses the documented 365 m diameter, 52 m can
 ### Daylight and final rendering
 
 Poly Haven `kloofendal_48d_partly_cloudy_puresky`, CC0: https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky . The 2K HDR photograph supplies the visible sky and image-based lighting, with matching environment/background rotation. Three.js EffectComposer applies HDR multisampling, SMAA edge antialiasing and a single ACES/display conversion. The gentle scene-linear contrast and shadow/highlight grading in `src/post.js` adapts the MIT-licensed Slop New York `post-processing.js`; attribution and license remain in `src/vendor/slop-new-york/`.
+
+Surrounding context buildings are excluded from the water reflection pass, while the detailed core city remains reflected. Software renderers use a lower-cost antialiasing/reflection configuration during normal play; the capture URL requests full quality.
