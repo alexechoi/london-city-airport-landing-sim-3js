@@ -18,6 +18,7 @@ export function buildUrbanGround(scene, data, parks = []) {
   const positions = [],
     colors = [],
     vertices = [];
+  const pedestrians = [];
   const roads = [],
     sidewalks = [],
     roadUV = [];
@@ -31,6 +32,9 @@ export function buildUrbanGround(scene, data, parks = []) {
   }
   // A connected, untextured street surface avoids stretching satellite pixels at low altitude.
   for (const [kind, p] of data.roads) {
+    const pedestrian = ["pedestrian", "platform", "living_street"].includes(
+      kind,
+    );
     let travelled = 0;
     const w = ["motorway", "trunk"].includes(kind)
       ? 7.5
@@ -48,7 +52,7 @@ export function buildUrbanGround(scene, data, parks = []) {
         nz = -dx / len;
       for (const [list, width, y] of [
         [sidewalks, w + 1.5, 0.02],
-        [roads, w, 0.08],
+        [pedestrian ? pedestrians : roads, w, pedestrian ? 0.06 : 0.08],
       ])
         quad(
           list,
@@ -57,15 +61,16 @@ export function buildUrbanGround(scene, data, parks = []) {
           [b[0] - nx * width, y, b[1] - nz * width],
           [b[0] + nx * width, y, b[1] + nz * width],
         );
-      for (const uv of [
-        [travelled, w],
-        [travelled, -w],
-        [travelled + len, -w],
-        [travelled, w],
-        [travelled + len, -w],
-        [travelled + len, w],
-      ])
-        roadUV.push(uv[0], uv[1], w > 4 ? 1 : 0);
+      if (!pedestrian)
+        for (const uv of [
+          [travelled, w],
+          [travelled, -w],
+          [travelled + len, -w],
+          [travelled, w],
+          [travelled + len, -w],
+          [travelled + len, w],
+        ])
+          roadUV.push(uv[0], uv[1], w > 4 ? 1 : 0);
       travelled += len;
     }
   }
@@ -81,6 +86,7 @@ export function buildUrbanGround(scene, data, parks = []) {
   }
   mesh(sidewalks, surfaceMaterial("paving"));
   mesh(roads, surfaceMaterial("road"));
+  mesh(pedestrians, surfaceMaterial("paving"));
   // Building plots ground the blocks, leaving gardens between streets.
   for (let i = 0; i < data.buildings.length; i++) {
     const [h, p] = data.buildings[i];

@@ -46,6 +46,12 @@ await page.evaluate(async () => {
   sim.freeze();
 });
 await page.evaluate(() => {
+  sim.renderAt(12);
+  document.getElementById("caption").hidden = true;
+});
+await page.screenshot({ path: "public/screenshots/o2.png" });
+console.log("O2 review captured", new Date().toISOString());
+await page.evaluate(() => {
   const [x, y, z] = sim.landmark.position;
   sim.inspect([x - 290, y + 50, z - 240], [x, 150, z]);
   document.getElementById("caption").hidden = true;

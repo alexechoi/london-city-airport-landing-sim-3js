@@ -29,6 +29,7 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=5)as pool:
    for f in data[layer]['features']:
     prop=f['properties'];kind=prop.get('class','');fid=(layer,f.get('id',0))
     if layer=='transportation':
+     if prop.get('brunnel')=='tunnel' or prop.get('tunnel') in ['yes',True] or prop.get('location')=='underground':continue
      if kind not in ['motorway','trunk','primary','secondary','tertiary','minor','service','residential']:continue
      g=f['geometry'];lines=[g['coordinates']]if g['type']=='LineString'else g['coordinates']if g['type']=='MultiLineString'else[]
      for line in lines:
