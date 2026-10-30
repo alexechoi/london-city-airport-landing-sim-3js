@@ -13,7 +13,7 @@ npm run build
 npm test
 ```
 
-WebGL2 desktop browser recommended. Touch controls are provided on small screens. Initial scenery download is approximately 9 MB; building geometry is generated locally.
+WebGL2 desktop browser recommended. Touch controls are provided on small screens. The central map and wider London context are shipped locally; building geometry is generated in the browser. A loading screen covers asset downloads and scene construction.
 
 ## Fly
 
@@ -46,7 +46,7 @@ Install Chromium and ffmpeg, or set `CHROMIUM_PATH`. Captures go into `work/`, w
 
 ## Rendering
 
-Real London OSM footprints and roads, batched textured facades and roofs, metric scene coordinates, detailed GPL-licensed E190 model and BA livery, photographic ground surfaces, atmospheric sky and distance haze, Ultra-Water FFT slopes with planar water reflections, view-following scenery shadows, runway/PAPI lights, and synthesised engine audio. Flight dynamics and some scenery are approximate.
+Real London OSM footprints, surrounding districts, waterways, green spaces and roads, batched textured facades and roofs, metric scene coordinates, detailed GPL-licensed E190 model and BA livery, photographic ground surfaces, atmospheric sky and distance haze, Ultra-Water FFT slopes with planar water reflections, view-following scenery shadows, runway/PAPI lights, and synthesised engine audio. Flight dynamics and some scenery are approximate.
 
 See [sources and licenses](docs/SOURCES.md). Application: Apache-2.0. OSM-derived databases: ODbL. Vendored Ultra-Water: MIT. Photographic surface textures: CC0. E190 aircraft assets: GPL-2.0-or-later with source included. Land-cover raster: CC BY 4.0. This is an independent entertainment project.
 
@@ -64,7 +64,7 @@ The revised video is rendered from the actual Three.js scene at 1280×720, 24 fp
 
 ## Rendering and control fixes
 
-The renderer uses logarithmic depth for kilometre-scale scenery, separated ground layers, anisotropic facade textures and softer water slopes. Redundant overlapping road surfaces and randomly placed trees were removed. The chase camera follows the aircraft heading with a small side offset; leaving the approach does not end the flight.
+The renderer uses reversed depth where supported, with a logarithmic-depth fallback for kilometre-scale scenery, separated ground layers, anisotropic facade textures and softer water slopes. Redundant overlapping road surfaces and randomly placed trees were removed. The chase camera follows the aircraft heading with a small side offset; leaving the approach does not end the flight.
 
 `node scripts/check-revision.mjs` checks all four cardinal camera headings on both approaches, flight outside the old boundary, impact effects and retry cleanup, and saves 48 motion frames.
 

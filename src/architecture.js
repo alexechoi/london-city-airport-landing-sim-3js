@@ -17,7 +17,12 @@ export function architecturalDetails(scene, buildings) {
     if (Math.abs(cx) > 1100 || cz < -7200 || cz > 500) continue;
     if (/house|terrace/.test(type) && height < 16) continue;
     const tall = height > 45;
-    const floorHeight = 3.6 + (((i * 2654435761) >>> 0) / 4294967296) * 0.3;
+    const floorHeight =
+      i === 10
+        ? 4.1
+        : i === 11
+          ? 4.43
+          : 3.6 + (((i * 2654435761) >>> 0) / 4294967296) * 0.3;
     for (let j = 0; j < p.length; j++) {
       const a = p[j],
         b = p[(j + 1) % p.length],

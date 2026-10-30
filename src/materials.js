@@ -8,8 +8,19 @@ float integralPulse(float t,float a,float b){return floor(t)*(b-a)+clamp(fract(t
 float pulse(float p,float a,float b,float width){float h=max(width,.0001)*.5;return clamp((integralPulse(p+h,a,b)-integralPulse(p-h,a,b))/(2.*h),0.,1.);}
 float band(float p,float period,float width){float q=p/period;return 1.-pulse(fract(q),width/period,1.-width/period,fwidth(q));}
 `;
-const vertex = `attribute vec4 building;varying vec4 vBuilding;varying vec2 vMetric;varying vec3 vCityPosition;varying vec3 vCityNormal;`;
+const vertex = `attribute vec4 building;flat varying vec4 vBuilding;varying vec2 vMetric;varying vec3 vCityPosition;varying vec3 vCityNormal;`;
 const setup = `vBuilding=building;vMetric=uv;vCityPosition=(modelMatrix*vec4(position,1.)).xyz;vCityNormal=normalize(mat3(modelMatrix)*normal);`;
+const photoCache = new Map();
+function surfacePhoto(name, colour = true) {
+  const key = name + colour;
+  if (photoCache.has(key)) return photoCache.get(key);
+  const texture = new T.TextureLoader().load("/textures/" + name + ".jpg");
+  texture.wrapS = texture.wrapT = T.RepeatWrapping;
+  texture.anisotropy = 8;
+  if (colour) texture.colorSpace = T.SRGBColorSpace;
+  photoCache.set(key, texture);
+  return texture;
+}
 export function createCityMaterials() {
   const styles = [
     [0x667987, 0x29495b, true],
@@ -20,15 +31,34 @@ export function createCityMaterials() {
     [0x555a5c, 0x223239, true],
     [0xafb7bb, 0x52636c, true],
     [0x969b98, 0x223239, false],
+    [0xa19a8c, 0x29495b, false],
+    [0xe1e1dc, 0x3c5364, false],
+    [0xadbfc5, 0x3e7e91, true],
   ];
   return styles.map(([wall, glass, modern], idx) => {
     const mat = new T.MeshStandardMaterial({
       roughness: 0.7,
       metalness: 0.08,
       side: T.DoubleSide,
+      envMapIntensity: modern ? 8 : 1,
     });
+    const photoName =
+      idx === 2
+        ? "red_brick_03"
+        : idx === 3
+          ? "brick_wall_001"
+          : idx === 1 || idx === 4
+            ? "concrete_wall_003"
+            : null;
+    if (photoName) {
+      mat.normalMap = surfacePhoto(photoName + "-nor_gl", false);
+      mat.normalMap.repeat.set(0.5, 0.5);
+      mat.normalScale.set(0.35, 0.35);
+    }
     mat.customProgramCacheKey = () => `london-facade-${idx}`;
     mat.onBeforeCompile = (s) => {
+      if (photoName)
+        s.uniforms.wallPhoto = { value: surfacePhoto(photoName + "-Diffuse") };
       s.uniforms.wallTint = { value: new T.Color(wall) };
       s.uniforms.glassTint = { value: new T.Color(glass) };
       s.vertexShader = vertex + "\n" + s.vertexShader;
@@ -37,7 +67,7 @@ export function createCityMaterials() {
         "#include <begin_vertex>\n" + setup,
       );
       s.fragmentShader =
-        `uniform vec3 wallTint;uniform vec3 glassTint;varying vec4 vBuilding;varying vec2 vMetric;varying vec3 vCityPosition;varying vec3 vCityNormal;\n${common}\n` +
+        `${photoName ? "uniform sampler2D wallPhoto;" : ""}uniform vec3 wallTint;uniform vec3 glassTint;flat varying vec4 vBuilding;varying vec2 vMetric;varying vec3 vCityPosition;varying vec3 vCityNormal;\n${common}\n` +
         s.fragmentShader;
       s.fragmentShader = s.fragmentShader.replace(
         "#include <color_fragment>",
@@ -47,10 +77,11 @@ export function createCityMaterials() {
       vec2 grid=vMetric/vec2(vBuilding.y,vBuilding.z), cell=fract(grid), fw=max(fwidth(grid),vec2(.0001));
       float detail=1.-smoothstep(.22,1.,max(fw.x,fw.y));
       float room=mix(.5,hashCity(floor(grid)+vec2(identity,identity*.37)),detail);
-      float modern=${modern ? "1." : "0."};
-      float wx=mix(.23,.035,modern),wy=mix(.23,.20,modern);
+      float modern=${idx === 8 ? "step(40.,vBuilding.w)" : modern ? "1." : "0."};
+      float wx=${idx === 9 ? ".17" : "mix(.23,.035,modern)"},wy=${idx === 9 ? ".12" : "mix(.23,.20,modern)"};
       float opening=pulse(cell.x,wx,1.-wx,fw.x)*pulse(cell.y,wy,.93,fw.y);
       ${idx === 7 ? `opening*=smoothstep(vBuilding.w-3.5,vBuilding.w-2.8,vMetric.y);` : ""}
+      ${idx === 9 ? `opening*=1.-smoothstep(198.,202.,vMetric.y);` : ""}
       float reveal=pulse(cell.x,wx-.025,1.-wx+.025,fw.x)*pulse(cell.y,wy-.025,.95,fw.y);
       float frame=pulse(cell.x,.488,.512,fw.x)*opening;
       float row=vMetric.y/.075;
@@ -61,6 +92,8 @@ export function createCityMaterials() {
       float courses=band(vMetric.y,3.2*4.,.10);
       masonry=mix(masonry,vec3(.43,.42,.38),courses*.28);
       vec3 wallBase=mix(masonry,wallTint*tone,modern);
+      ${idx === 9 ? `wallBase=wallTint*(.94+weather*.06);` : ""}
+      ${photoName ? `vec3 photoWall=texture2D(wallPhoto,vMetric*.5).rgb;wallBase=mix(wallBase,photoWall*tone,.85);` : ""}
       ${idx === 7 ? `wallBase=wallTint*tone*(1.-band(vMetric.x,.3,.035)*.18);reveal=opening;` : ""}
       vec3 viewDir=normalize(cameraPosition-vCityPosition);
       vec3 n=normalize(vCityNormal);
@@ -87,6 +120,11 @@ export function createCityMaterials() {
       diffuseColor.rgb=facade*footAO;
       `,
       );
+      if (photoName)
+        s.fragmentShader = s.fragmentShader.replace(
+          "#include <normal_fragment_maps>",
+          "#include <normal_fragment_maps>\nnormal=normalize(mix(normal,nonPerturbedNormal,opening));",
+        );
       s.fragmentShader = s.fragmentShader.replace(
         "#include <roughnessmap_fragment>",
         "#include <roughnessmap_fragment>\nroughnessFactor=mix(.88,.16+room*.07,opening);",
@@ -106,11 +144,22 @@ export function createCityMaterials() {
 export function surfaceMaterial(kind = "paving", landcover = null) {
   const m = new T.MeshStandardMaterial({ roughness: 0.9, side: T.DoubleSide });
   m.customProgramCacheKey = () => `london-ground-${kind}`;
+  const floorPhoto =
+    kind === "park"
+      ? surfacePhoto("grass")
+      : kind === "paving"
+        ? surfacePhoto("concrete_pavement-Diffuse")
+        : kind === "roof"
+          ? surfacePhoto("roof_slates_02-Diffuse")
+          : kind === "road"
+            ? surfacePhoto("asphalt")
+            : null;
   m.onBeforeCompile = (s) => {
+    if (floorPhoto) s.uniforms.floorPhoto = { value: floorPhoto };
     s.vertexShader =
       (kind === "road" ? "attribute vec3 roadUV;varying vec3 vRoadUV;" : "") +
       (kind === "roof"
-        ? "attribute vec4 building;varying float vRoofSeed;"
+        ? "attribute vec4 building;flat varying float vRoofSeed;flat varying float vRoofSlope;"
         : "") +
       "varying vec3 vGround;\n" +
       s.vertexShader;
@@ -118,11 +167,13 @@ export function surfaceMaterial(kind = "paving", landcover = null) {
       "#include <begin_vertex>",
       "#include <begin_vertex>\nvGround=(modelMatrix*vec4(position,1.)).xyz;" +
         (kind === "road" ? "vRoadUV=roadUV;" : "") +
-        (kind === "roof" ? "vRoofSeed=building.x;" : ""),
+        (kind === "roof"
+          ? "vRoofSeed=building.x;vRoofSlope=1.-step(.995,normal.y);"
+          : ""),
     );
     if (landcover) s.uniforms.landcover = { value: landcover };
     s.fragmentShader =
-      `${kind === "roof" ? "varying float vRoofSeed;" : ""}${kind === "road" ? "varying vec3 vRoadUV;" : ""}${landcover ? "uniform sampler2D landcover;" : ""}varying vec3 vGround;\n${common}\n` +
+      `${floorPhoto ? "uniform sampler2D floorPhoto;" : ""}${kind === "roof" ? "flat varying float vRoofSeed;flat varying float vRoofSlope;" : ""}${kind === "road" ? "varying vec3 vRoadUV;" : ""}${landcover ? "uniform sampler2D landcover;" : ""}varying vec3 vGround;\n${common}\n` +
       s.fragmentShader;
     const road = kind === "road",
       roof = kind === "roof",
@@ -149,8 +200,10 @@ export function surfaceMaterial(kind = "paving", landcover = null) {
         : ""
     }
 ${roof ? `base*=.78+hashCity(vec2(vRoofSeed,17.))*.44;` : ""}
+${floorPhoto ? `vec3 photographed=texture2D(floorPhoto,p/${kind === "road" ? "5." : "4."}).rgb;base=mix(base,photographed*${kind === "roof" ? ".72" : ".8"},${kind === "road" ? ".5" : kind === "roof" ? ".75*vRoofSlope" : ".75"});` : ""}
     base*=mix(.93,1.06,fine)*(1.-damp*.14);
     ${road ? `float lineWidth=max(fwidth(vRoadUV.y),.001);float centre=clamp((.11-abs(vRoadUV.y))/lineWidth+.5,0.,1.)*min(1.,.11/lineWidth);float dash=pulse(fract(vRoadUV.x/9.),0.,.33,fwidth(vRoadUV.x/9.));base=mix(base,vec3(.62,.60,.52),centre*dash*vRoadUV.z*.75);` : ""}
+${kind === "park" ? `base=mix(vec3(.07,.12,.035),vec3(.14,.20,.075),medium*.5+broad*.5);base*=.8+.5*dot(photographed,vec3(.333));` : ""}
     diffuseColor.rgb*=base;
     `,
     );

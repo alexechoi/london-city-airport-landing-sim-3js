@@ -1,17 +1,20 @@
 import "./style.css";
+import { addLandmarkDetails } from "./landmarks.js";
 import { mergeStaticMeshes } from "./batching.js";
 import { Impact } from "./impact.js";
 import { collisionIndex } from "./collision.js";
 import { buildUrbanGround } from "./ground.js";
 import { architecturalDetails } from "./architecture.js";
 import { createCityMaterials, surfaceMaterial } from "./materials.js";
-import { addDistantCity } from "./distant-city.js";
+import { addContextCity } from "./context-city.js";
 import { addVegetation } from "./vegetation.js";
 import { addCity } from "./city.js";
 window.setLoadingProgress(8, "Loading London map data");
-const [mapData, waterData] = await Promise.all([
+const [mapData, waterData, contextData, parkData] = await Promise.all([
   fetch("/london.json").then((r) => r.json()),
   fetch("/water.json").then((r) => r.json()),
+  fetch("/context.json").then((r) => r.json()),
+  fetch("/parks.json").then((r) => r.json()),
 ]);
 window.setLoadingProgress(30, "Constructing the airport and skyline");
 await new Promise((resolve) =>
@@ -20,6 +23,9 @@ await new Promise((resolve) =>
 import * as T from "three";
 let texturesReady = false,
   renderedFrames = 0;
+T.DefaultLoadingManager.onStart = () => {
+  texturesReady = false;
+};
 T.DefaultLoadingManager.onProgress = (url, loaded, total) =>
   window.setLoadingProgress(
     Math.min(94, 70 + Math.round((loaded / total) * 24)),
@@ -31,27 +37,34 @@ T.DefaultLoadingManager.onLoad = () => {
 T.DefaultLoadingManager.onError = () => window.loadingFailed();
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Sky } from "three/addons/objects/Sky.js";
-import { Water } from "three/addons/objects/Water.js";
+import { Water } from "./vendor/three-water/Water.js";
 import {
   OceanSim,
   defaultOceanParams,
 } from "./vendor/ultra-water/water/OceanSim.js";
 import { initialFlight, stepFlight, landingVerdict } from "./flight.js";
-const $ = (id) => document.getElementById(id),
-  renderer = new T.WebGLRenderer({
-    canvas: $("world"),
-    antialias: true,
-    logarithmicDepthBuffer: true,
-    powerPreference: "high-performance",
-  });
+const $ = (id) => document.getElementById(id);
+const gl = $("world").getContext("webgl2", {
+  antialias: true,
+  powerPreference: "high-performance",
+});
+const supportsReverseDepth = !!gl?.getExtension("EXT_clip_control");
+const renderer = new T.WebGLRenderer({
+  canvas: $("world"),
+  antialias: true,
+  context: gl,
+  reversedDepthBuffer: supportsReverseDepth,
+  logarithmicDepthBuffer: !supportsReverseDepth,
+  powerPreference: "high-performance",
+});
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.7));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = T.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.9;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = T.PCFSoftShadowMap;
+renderer.shadowMap.type = T.PCFShadowMap;
 const scene = new T.Scene();
-scene.fog = new T.FogExp2(0xe6edf0, 0.00016);
+scene.fog = new T.FogExp2(0xb8c6cf, 0.00012);
 const camera = new T.PerspectiveCamera(
   48,
   innerWidth / innerHeight,
@@ -61,6 +74,10 @@ const camera = new T.PerspectiveCamera(
 const sun = new T.Vector3(-0.55, 0.48, -0.65).normalize();
 const sky = new Sky();
 sky.scale.setScalar(40000);
+sky.material.fragmentShader = sky.material.fragmentShader.replace(
+  "gl_FragColor = vec4( texColor, 1.0 );",
+  "gl_FragColor = vec4( texColor * .45, 1.0 );",
+);
 scene.add(sky);
 Object.assign(sky.material.uniforms.turbidity, { value: 5 });
 sky.material.uniforms.rayleigh.value = 1.5;
@@ -79,7 +96,8 @@ Object.assign(sunlight.shadow.camera, {
   near: 1,
   far: 9000,
 });
-sunlight.shadow.bias = -0.0003;
+sunlight.shadow.bias = supportsReverseDepth ? 0.00025 : -0.00025;
+sunlight.shadow.normalBias = 0.65;
 sunlight.target.position.set(0, 0, -750);
 scene.add(sunlight.target);
 scene.add(sunlight);
@@ -205,41 +223,13 @@ function water(x, z, w, d, geometry) {
   waters.push(o);
   return o;
 }
-const shapes = waterData.map(
-  (points) => new T.Shape(points.map((p) => new T.Vector2(p[0], -p[1]))),
-);
-// Broad tidal Thames ribbon, sampled along its Greenwich and Silvertown bends.
-// Digitised against the EOX Sentinel-2 reference; pixel bounds 2048x1024.
-const riverCoords = [
-  [-100, 480],
-  [0, 480],
-  [100, 440],
-  [200, 480],
-  [252, 600],
-  [260, 750],
-  [330, 870],
-  [450, 925],
-  [565, 890],
-  [620, 815],
-  [605, 730],
-  [570, 630],
-  [585, 540],
-  [640, 490],
-  [700, 495],
-  [750, 550],
-  [800, 620],
-  [900, 680],
-  [1040, 670],
-  [1200, 660],
-  [1400, 685],
-  [1550, 670],
-  [1640, 610],
-  [1690, 500],
-  [1750, 410],
-  [1850, 360],
-  [2000, 380],
-  [2150, 410],
-].map(([x, y]) => [-0.05 + (x / 2048) * 0.16, 51.53 - (y / 1024) * 0.05]);
+const shapes = waterData.map(({ outer, holes }) => {
+  const shape = new T.Shape(outer.map((p) => new T.Vector2(p[0], -p[1])));
+  for (const ring of holes)
+    shape.holes.push(new T.Path(ring.map((p) => new T.Vector2(p[0], -p[1]))));
+  return shape;
+});
+// All docks and the Thames now use joined, mapped OSM water polygons.
 function geo(lon, lat) {
   const e = (lon - 0.06602) * 111320 * Math.cos((51.505 * Math.PI) / 180),
     n = (lat - 51.50494) * 111320,
@@ -250,20 +240,6 @@ function geo(lon, lat) {
     e * Math.cos(a) - n * Math.sin(a),
   );
 }
-const riverCurve = new T.CatmullRomCurve3(
-  riverCoords.map(([lon, lat]) => geo(lon, lat)),
-);
-const bankA = [],
-  bankB = [];
-for (let i = 0; i <= 240; i++) {
-  const t = i / 240,
-    p = riverCurve.getPoint(t),
-    v = riverCurve.getTangent(t),
-    width = t < 0.65 ? 165 : 205;
-  bankA.push(new T.Vector2(p.x + v.z * width, -p.z + v.x * width));
-  bankB.push(new T.Vector2(p.x - v.z * width, -p.z - v.x * width));
-}
-shapes.push(new T.Shape([...bankA, ...bankB.reverse()]));
 water(0, 0, 0, 0, new T.ShapeGeometry(shapes));
 // Each reflection hides every other water plane to avoid recursive reflection passes.
 for (const w of waters) {
@@ -334,6 +310,7 @@ function bulb(x, y, z, m) {
   const o = new T.Mesh(bulbGeo, m);
   o.position.set(x, y, z);
   scene.add(o);
+  airportMeshes.push(o);
 }
 for (let z = 0; z >= -1508; z -= 30)
   for (const x of [-16, 16]) bulb(x, 1.8, z, glow);
@@ -414,23 +391,29 @@ cityColliders.push(
   { minX: -313, maxX: -287, minZ: -1853, maxZ: -1827, h: 57 },
 );
 const architectureStats = architecturalDetails(scene, mapData.buildings);
-buildUrbanGround(scene, mapData);
-const distantBuildingCount = addDistantCity(scene);
+buildUrbanGround(scene, mapData, parkData);
+cityColliders.push(
+  ...addContextCity(scene, contextData, buildingMats, cityRoof),
+);
+cityColliders.push({ ...canadaBounds, h: 235 });
+const o2Collision = geo(0.0032, 51.503);
+cityColliders.push({
+  minX: o2Collision.x - 180,
+  maxX: o2Collision.x + 180,
+  minZ: o2Collision.z - 180,
+  maxZ: o2Collision.z + 180,
+  h: 42,
+});
 const collisions = collisionIndex(cityColliders);
 const vegetationCount = await addVegetation(
   scene,
   landcover,
-  [
-    ...waterData,
-    shapes
-      .at(-1)
-      .getPoints()
-      .map((p) => [p.x, -p.y]),
-  ],
+  waterData.map((p) => p.outer),
   collisions,
   mapData.roads,
 );
 const impact = new Impact(scene);
+addLandmarkDetails(scene, mapData);
 // Crown shares the tower's bounds and sits directly on its 205 m roof.
 const canadaX = (canadaBounds.minX + canadaBounds.maxX) / 2,
   canadaZ = (canadaBounds.minZ + canadaBounds.maxZ) / 2;
@@ -1000,6 +983,12 @@ window.sim = {
   renderer,
   architectureStats,
   vegetationCount,
+  setShadows(enabled, normalBias = 0.65) {
+    renderer.shadowMap.enabled = enabled;
+    sunlight.shadow.normalBias = normalBias;
+    renderer.shadowMap.needsUpdate = true;
+    renderer.render(scene, camera);
+  },
   landmark: { position: [canadaX, 205, canadaZ], crownWidth },
   inspect(position, target) {
     manual = true;

@@ -92,46 +92,84 @@ export async function addVegetation(
       if (collisions.hit(point, point)) continue;
       spots.push([px, pz, 5 + rnd() * 7, rnd()]);
     }
-  const crownGeo = new T.IcosahedronGeometry(1, 2);
-  const positions = crownGeo.attributes.position;
-  for (let i = 0; i < positions.count; i++) {
-    const v = new T.Vector3().fromBufferAttribute(positions, i);
-    v.multiplyScalar(0.9 + 0.14 * Math.sin(v.x * 17 + v.y * 11 + v.z * 13));
-    positions.setXYZ(i, v.x, v.y, v.z);
-  }
-  crownGeo.computeVertexNormals();
   const leaf = new T.MeshStandardMaterial({ color: 0x697c3f, roughness: 1 });
-  const crowns = new T.InstancedMesh(crownGeo, leaf, spots.length * 3);
-  const trunks = new T.InstancedMesh(
-    new T.CylinderGeometry(0.22, 0.4, 1, 5),
-    new T.MeshStandardMaterial({ color: 0x554839, roughness: 1 }),
-    spots.length,
-  );
-  const dummy = new T.Object3D();
-  spots.forEach(([x, z, h, r], i) => {
-    dummy.position.set(x, h * 0.28, z);
-    dummy.scale.set(1, h * 0.56, 1);
-    dummy.updateMatrix();
-    trunks.setMatrixAt(i, dummy.matrix);
-    for (let j = 0; j < 3; j++) {
-      dummy.position.set(
-        x + Math.sin(j * 2.1 + r) * h * 0.16,
-        h * 0.65 + (j === 0 ? h * 0.1 : 0),
-        z + Math.cos(j * 2.1 + r) * h * 0.16,
-      );
-      dummy.scale.set(h * 0.3, h * 0.35, h * 0.3);
-      dummy.rotation.y = r * 6;
-      dummy.updateMatrix();
-      crowns.setMatrixAt(i * 3 + j, dummy.matrix);
-      crowns.setColorAt(
-        i * 3 + j,
-        new T.Color().setHSL(0.2 + r * 0.045, 0.27 + r * 0.1, 0.25 + r * 0.1),
-      );
+  const bark = new T.MeshStandardMaterial({ color: 0x554839, roughness: 1 });
+  const geometries = [0, 1].map((detail) => {
+    const g = new T.IcosahedronGeometry(1, detail),
+      a = g.attributes.position;
+    for (let i = 0; i < a.count; i++) {
+      const v = new T.Vector3().fromBufferAttribute(a, i);
+      v.multiplyScalar(0.94 + 0.08 * Math.sin(v.x * 17 + v.y * 11 + v.z * 13));
+      a.setXYZ(i, v.x, v.y, v.z);
     }
+    g.computeVertexNormals();
+    return g;
   });
-  crowns.castShadow = true;
-  crowns.receiveShadow = true;
-  trunks.castShadow = true;
-  scene.add(crowns, trunks);
+  const treeCells = new Map();
+  for (const spot of spots) {
+    const key = `${Math.floor(spot[0] / 600)},${Math.floor(spot[1] / 600)}`;
+    if (!treeCells.has(key)) treeCells.set(key, []);
+    treeCells.get(key).push(spot);
+  }
+  const dummy = new T.Object3D();
+  for (const [key, trees] of treeCells) {
+    const [gx, gz] = key.split(",").map(Number);
+    const cx = gx * 600 + 300,
+      cz = gz * 600 + 300;
+    const lod = new T.LOD();
+    lod.position.set(cx, 0, cz);
+    for (const detail of [1, 0]) {
+      const group = new T.Group();
+      const crowns = new T.InstancedMesh(
+        geometries[detail],
+        leaf,
+        trees.length * 3,
+      );
+      const trunks = detail
+        ? new T.InstancedMesh(
+            new T.CylinderGeometry(0.22, 0.4, 1, 5),
+            bark,
+            trees.length,
+          )
+        : null;
+      trees.forEach(([x, z, h, r], i) => {
+        if (trunks) {
+          dummy.position.set(x - cx, h * 0.28, z - cz);
+          dummy.scale.set(1, h * 0.56, 1);
+          dummy.rotation.set(0, 0, 0);
+          dummy.updateMatrix();
+          trunks.setMatrixAt(i, dummy.matrix);
+        }
+        for (let j = 0; j < 3; j++) {
+          dummy.position.set(
+            x - cx + Math.sin(j * 2.1 + r) * h * 0.16,
+            h * 0.65 + (j === 0 ? h * 0.1 : 0),
+            z - cz + Math.cos(j * 2.1 + r) * h * 0.16,
+          );
+          dummy.scale.set(h * 0.3, h * 0.35, h * 0.3);
+          dummy.rotation.set(0, r * 6, 0);
+          dummy.updateMatrix();
+          crowns.setMatrixAt(i * 3 + j, dummy.matrix);
+          crowns.setColorAt(
+            i * 3 + j,
+            new T.Color().setHSL(
+              0.2 + r * 0.045,
+              0.27 + r * 0.1,
+              0.25 + r * 0.1,
+            ),
+          );
+        }
+      });
+      crowns.castShadow = true;
+      crowns.receiveShadow = true;
+      group.add(crowns);
+      if (trunks) {
+        trunks.castShadow = true;
+        group.add(trunks);
+      }
+      lod.addLevel(group, detail ? 0 : 650, 0.15);
+    }
+    scene.add(lod);
+  }
   return spots.length;
 }

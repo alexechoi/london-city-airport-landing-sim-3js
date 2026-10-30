@@ -1,7 +1,9 @@
 import * as T from "three";
 // Real footprints, metric wall UVs, roof triangles; batch by material, not by building.
-export function addCity(scene, data, materials, roofMaterial) {
-  const batches = materials.map(() => ({ p: [], n: [], u: [], b: [] })),
+export function addCity(scene, data, materials, roofMaterial, seedOffset = 0) {
+  const uniqueMaterials = [...new Set(materials)],
+    materialSlots = materials.map((m) => uniqueMaterials.indexOf(m));
+  const batches = uniqueMaterials.map(() => ({ p: [], n: [], u: [], b: [] })),
     roofs = { p: [], n: [], u: [], b: [] };
   const colliders = [];
   let parameters = [0, 2.6, 3.2, 10];
@@ -19,21 +21,39 @@ export function addCity(scene, data, materials, roofMaterial) {
     const h = Math.min(310, height),
       b =
         batches[
-          /industrial|warehouse|service|shed|garage|hangar/.test(type)
-            ? 7
-            : height > 45
-              ? index === 10
-                ? 6
-                : [0, 5, 0, 6][index % 4]
-              : /house|terrace/.test(type)
-                ? 2 + (index % 2)
-                : 1 + (index % 4)
+          materialSlots[
+            seedOffset === 0 && index === 10
+              ? 9
+              : seedOffset === 0 && index === 11
+                ? 10
+                : seedOffset === 0 && index === 4525
+                  ? 5
+                  : /industrial|warehouse|service|shed|garage|hangar/.test(type)
+                    ? 7
+                    : height > 45
+                      ? index === 10
+                        ? 6
+                        : [0, 5, 0, 6][index % 4]
+                      : /house|terrace/.test(type)
+                        ? 2 + (index % 2)
+                        : 1 + (index % 4)
+          ]
         ];
     const rnd = ((index * 2654435761) >>> 0) / 4294967296;
     parameters = [
-      index * 0.73 + 1,
-      height > 45 ? 1.7 + rnd * 0.8 : 2.5 + rnd * 0.7,
-      height > 45 ? 3.6 + rnd * 0.3 : 3.05,
+      (index + seedOffset) * 0.73 + 1,
+      seedOffset === 0 && index === 10
+        ? 3.2
+        : height > 45
+          ? 1.7 + rnd * 0.8
+          : 2.5 + rnd * 0.7,
+      seedOffset === 0 && index === 10
+        ? 4.1
+        : seedOffset === 0 && index === 11
+          ? 4.43
+          : height > 45
+            ? 3.6 + rnd * 0.3
+            : 3.05,
       height,
     ];
     const points = poly.slice(0, -1);
@@ -164,6 +184,7 @@ export function addCity(scene, data, materials, roofMaterial) {
     if (h > 2) colliders.push({ minX, maxX, minZ, maxZ, h: h + roofRise });
   }
   function mesh(b, m) {
+    if (!b.p.length) return;
     const g = new T.BufferGeometry();
     g.setAttribute("position", new T.Float32BufferAttribute(b.p, 3));
     g.setAttribute("normal", new T.Float32BufferAttribute(b.n, 3));
@@ -175,7 +196,7 @@ export function addCity(scene, data, materials, roofMaterial) {
     o.receiveShadow = true;
     scene.add(o);
   }
-  batches.forEach((b, i) => mesh(b, materials[i]));
+  batches.forEach((b, i) => mesh(b, uniqueMaterials[i]));
   mesh(roofs, roofMaterial);
   return colliders;
 }

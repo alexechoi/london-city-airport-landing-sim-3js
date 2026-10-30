@@ -1,6 +1,20 @@
 import * as T from "three";
 import { surfaceMaterial } from "./materials.js";
-export function buildUrbanGround(scene, data) {
+export function buildUrbanGround(scene, data, parks = []) {
+  const parkShapes = parks.map(({ outer, holes }) => {
+    const shape = new T.Shape(outer.map((p) => new T.Vector2(p[0], -p[1])));
+    for (const ring of holes)
+      shape.holes.push(new T.Path(ring.map((p) => new T.Vector2(p[0], -p[1]))));
+    return shape;
+  });
+  const parkMesh = new T.Mesh(
+    new T.ShapeGeometry(parkShapes),
+    surfaceMaterial("park"),
+  );
+  parkMesh.rotation.x = -Math.PI / 2;
+  parkMesh.position.y = -0.2;
+  parkMesh.receiveShadow = true;
+  scene.add(parkMesh);
   const positions = [],
     colors = [],
     vertices = [];
