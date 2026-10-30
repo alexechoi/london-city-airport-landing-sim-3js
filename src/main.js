@@ -1,20 +1,32 @@
 import "./style.css";
 import { Impact } from "./impact.js";
 import { collisionIndex } from "./collision.js";
+import { buildUrbanGround } from "./ground.js";
 import { architecturalDetails } from "./architecture.js";
+import { createCityMaterials, surfaceMaterial } from "./materials.js";
+import { addVegetation } from "./vegetation.js";
 import { addCity } from "./city.js";
-window.setLoadingProgress(8,"Loading London map data");
+window.setLoadingProgress(8, "Loading London map data");
 const [mapData, waterData] = await Promise.all([
   fetch("/london.json").then((r) => r.json()),
   fetch("/water.json").then((r) => r.json()),
 ]);
-window.setLoadingProgress(30,"Constructing the airport and skyline");
-await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+window.setLoadingProgress(30, "Constructing the airport and skyline");
+await new Promise((resolve) =>
+  requestAnimationFrame(() => requestAnimationFrame(resolve)),
+);
 import * as T from "three";
-let texturesReady=false, renderedFrames=0;
-T.DefaultLoadingManager.onProgress=(url,loaded,total)=>window.setLoadingProgress(Math.min(94,70+Math.round(loaded/total*24)),"Loading surface textures");
-T.DefaultLoadingManager.onLoad=()=>{texturesReady=true;};
-T.DefaultLoadingManager.onError=()=>window.loadingFailed();
+let texturesReady = false,
+  renderedFrames = 0;
+T.DefaultLoadingManager.onProgress = (url, loaded, total) =>
+  window.setLoadingProgress(
+    Math.min(94, 70 + Math.round((loaded / total) * 24)),
+    "Loading surface textures",
+  );
+T.DefaultLoadingManager.onLoad = () => {
+  texturesReady = true;
+};
+T.DefaultLoadingManager.onError = () => window.loadingFailed();
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Sky } from "three/addons/objects/Sky.js";
 import { Water } from "three/addons/objects/Water.js";
@@ -37,7 +49,7 @@ renderer.toneMappingExposure = 0.9;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = T.PCFSoftShadowMap;
 const scene = new T.Scene();
-scene.fog = new T.FogExp2(0xb8cbd7, 0.000095);
+scene.fog = new T.FogExp2(0xd2dfe3, 0.00018);
 const camera = new T.PerspectiveCamera(
   48,
   innerWidth / innerHeight,
@@ -52,8 +64,8 @@ Object.assign(sky.material.uniforms.turbidity, { value: 5 });
 sky.material.uniforms.rayleigh.value = 1.5;
 sky.material.uniforms.mieCoefficient.value = 0.006;
 sky.material.uniforms.sunPosition.value.copy(sun);
-scene.add(new T.HemisphereLight(0xdce9f4, 0x676e72, 1.1));
-const sunlight = new T.DirectionalLight(0xffeed5, 3.5);
+scene.add(new T.HemisphereLight(0xbcd4ee, 0x7d7568, 1.45));
+const sunlight = new T.DirectionalLight(0xffdbad, 4.1);
 sunlight.position.copy(sun).multiplyScalar(4000);
 sunlight.castShadow = true;
 sunlight.shadow.mapSize.set(2048, 2048);
@@ -107,41 +119,17 @@ function line(points, color = 0xe1d7b3) {
   scene.add(o);
   return o;
 }
-// Generated microtextures keep the repository self-contained.
-function texture(kind) {
-  const c = document.createElement("canvas");
-  c.width = c.height = 256;
-  const g = c.getContext("2d");
-  g.fillStyle = kind === "facade" ? "#748080" : "#74776a";
-  g.fillRect(0, 0, 256, 256);
-  if (kind === "facade") {
-    for (let y = 4; y < 256; y += 25)
-      for (let x = 3; x < 256; x += 24) {
-        g.fillStyle =
-          rand() > 0.23
-            ? ["#273d49", "#45616d", "#91a6ad", "#ac9d79"][
-                Math.floor(rand() * 4)
-              ]
-            : "#aab1ad";
-        g.fillRect(x, y, 15, 17);
-      }
-  } else {
-    for (let i = 0; i < 18000; i++) {
-      const n = Math.floor(rand() * 90 + 70);
-      g.fillStyle = `rgba(${n},${n},${n - 10},.2)`;
-      g.fillRect(rand() * 256, rand() * 256, 1, 1);
-    }
-  }
-  const t = new T.CanvasTexture(c);
-  t.wrapS = t.wrapT = T.RepeatWrapping;
-  return t;
-}
-const groundTex = texture("ground");
-groundTex.repeat.set(80, 80);
-const terrain = mat(0x8b8976);
-terrain.map = groundTex;
-box(0, -15, -2500, 24000, 8, 20000, terrain);
 const loader = new T.TextureLoader();
+const landcover = loader.load("/textures/landcover.jpg");
+const terrain = surfaceMaterial("terrain", landcover);
+const landMesh = new T.Mesh(
+  new T.PlaneGeometry(50000, 50000, 150, 150),
+  terrain,
+);
+landMesh.rotation.x = -Math.PI / 2;
+landMesh.position.set(0, -2, -2500);
+landMesh.receiveShadow = true;
+scene.add(landMesh);
 function photo(url, repeat) {
   const t = loader.load("/textures/" + url + ".jpg");
   t.colorSpace = T.SRGBColorSpace;
@@ -154,40 +142,6 @@ const paving = photo("concrete", 20);
 concrete.map = paving;
 grass.map = photo("grass", 15);
 asphalt.map = photo("asphalt", 8);
-terrain.map = photo("grass", 120);
-terrain.color.setHex(0x939b86);
-
-// EOX Sentinel-2 cloudless aerial ground, CC BY 4.0. North-up geographic image
-// transformed into the same rotated metric frame as the OSM geometry.
-const satellite = loader.load("/textures/london-satellite.jpg");
-satellite.colorSpace = T.SRGBColorSpace;
-satellite.anisotropy = renderer.capabilities.getMaxAnisotropy();
-const satelliteMaterial = new T.MeshStandardMaterial({
-  map: satellite,
-  roughness: 1,
-  color: 0xe2e2df,
-});
-const satellitePlane = new T.Mesh(
-  new T.PlaneGeometry(
-    0.16 * 111320 * Math.cos((51.505 * Math.PI) / 180),
-    0.05 * 111320,
-  ),
-  satelliteMaterial,
-);
-satellitePlane.rotation.order = "YXZ";
-satellitePlane.rotation.y = -(Math.PI / 2 - (2.8 * Math.PI) / 180);
-satellitePlane.rotation.x = -Math.PI / 2;
-const se = (0.03 - 0.06602) * 111320 * Math.cos((51.505 * Math.PI) / 180),
-  sn = (51.505 - 51.50494) * 111320,
-  sa = (2.8 * Math.PI) / 180;
-satellitePlane.position.set(
-  sn * Math.cos(sa) + se * Math.sin(sa),
-  -0.9,
-  se * Math.cos(sa) - sn * Math.sin(sa),
-);
-satellitePlane.receiveShadow = true;
-scene.add(satellitePlane);
-// Royal Albert Dock (north), King George V Dock (south), and the Thames.
 const normalCanvas = document.createElement("canvas");
 normalCanvas.width = normalCanvas.height = 128;
 const ng = normalCanvas.getContext("2d"),
@@ -239,7 +193,10 @@ function water(x, z, w, d, geometry) {
     `vec4 getNoise(vec2 uv){vec2 slope=texture2D(uSlope0,uv/600.0).xy+texture2D(uSlope1,uv/85.0).xy+texture2D(uSlope2,uv/12.0).xy; slope*=0.35;return vec4(-slope.x,-slope.y,1.0,1.0);}
 ` +
     o.material.fragmentShader.slice(en);
-  o.material.fragmentShader=o.material.fragmentShader.replace('reflectionSample + specularLight, reflectance','reflectionSample * 0.42 + specularLight * 0.35, reflectance * 0.7');
+  o.material.fragmentShader = o.material.fragmentShader.replace(
+    "reflectionSample + specularLight, reflectance",
+    "reflectionSample * 0.42 + specularLight * 0.35, reflectance * 0.7",
+  );
   scene.add(o);
   waters.push(o);
   return o;
@@ -248,25 +205,37 @@ const shapes = waterData.map(
   (points) => new T.Shape(points.map((p) => new T.Vector2(p[0], -p[1]))),
 );
 // Broad tidal Thames ribbon, sampled along its Greenwich and Silvertown bends.
+// Digitised against the EOX Sentinel-2 reference; pixel bounds 2048x1024.
 const riverCoords = [
-  [-0.055, 51.507],
-  [-0.041, 51.501],
-  [-0.033, 51.49],
-  [-0.022, 51.483],
-  [-0.008, 51.482],
-  [0.004, 51.485],
-  [0.01, 51.493],
-  [0.003, 51.503],
-  [0.003, 51.508],
-  [0.014, 51.509],
-  [0.024, 51.502],
-  [0.034, 51.496],
-  [0.05, 51.496],
-  [0.067, 51.495],
-  [0.087, 51.492],
-  [0.11, 51.493],
-  [0.14, 51.49],
-];
+  [-100, 480],
+  [0, 480],
+  [100, 440],
+  [200, 480],
+  [252, 600],
+  [260, 750],
+  [330, 870],
+  [450, 925],
+  [565, 890],
+  [620, 815],
+  [605, 730],
+  [570, 630],
+  [585, 540],
+  [640, 490],
+  [700, 495],
+  [750, 550],
+  [800, 620],
+  [900, 680],
+  [1040, 670],
+  [1200, 660],
+  [1400, 685],
+  [1550, 670],
+  [1640, 610],
+  [1690, 500],
+  [1750, 410],
+  [1850, 360],
+  [2000, 380],
+  [2150, 410],
+].map(([x, y]) => [-0.05 + (x / 2048) * 0.16, 51.53 - (y / 1024) * 0.05]);
 function geo(lon, lat) {
   const e = (lon - 0.06602) * 111320 * Math.cos((51.505 * Math.PI) / 180),
     n = (lat - 51.50494) * 111320,
@@ -286,7 +255,7 @@ for (let i = 0; i <= 240; i++) {
   const t = i / 240,
     p = riverCurve.getPoint(t),
     v = riverCurve.getTangent(t),
-    width = 180;
+    width = t < 0.65 ? 165 : 205;
   bankA.push(new T.Vector2(p.x + v.z * width, -p.z + v.x * width));
   bankB.push(new T.Vector2(p.x - v.z * width, -p.z - v.x * width));
 }
@@ -301,6 +270,16 @@ for (const w of waters) {
     reflect.apply(this, args);
     others.forEach((o) => (o.visible = true));
   };
+}
+const shadowFocus = new T.Vector3(Infinity, 0, Infinity);
+function updateShadows() {
+  const focus = new T.Vector3(camera.position.x, 0, camera.position.z);
+  if (focus.distanceToSquared(shadowFocus) < 160 * 160) return;
+  shadowFocus.copy(focus);
+  sunlight.target.position.copy(focus);
+  sunlight.position.copy(focus).addScaledVector(sun, 4000);
+  sunlight.target.updateMatrixWorld();
+  renderer.shadowMap.needsUpdate = true;
 }
 renderer.shadowMap.autoUpdate = false;
 renderer.shadowMap.needsUpdate = true;
@@ -397,113 +376,126 @@ cylinder(4, 6, 42, concrete, -300, 21, -1840);
 cylinder(11, 7, 7, glass, -300, 44, -1840);
 cylinder(13, 11, 2, white, -300, 49, -1840);
 box(-300, 56, -1840, 1, 13, 1, dark);
-// Buildings: batched facades and roofs, thousands of windows.
-const facade = texture("facade");
-function facadeMap(style) {
-  const c = document.createElement("canvas");
-  c.width = c.height = 512;
-  const g = c.getContext("2d");
-  g.fillStyle = style === 0 ? "#466477" : style === 1 ? "#9d8d76" : "#a8a6a0";
-  g.fillRect(0, 0, 512, 512);
-  for (let y = 0; y < 512; y += 48) {
-    for (let x = 0; x < 512; x += style === 0 ? 24 : 42) {
-      if (style === 0) {
-        g.fillStyle = ["#668493", "#718e9b", "#587886"][Math.floor(rand() * 3)];
-        g.fillRect(x + 2, y + 2, 21, 44);
-        g.fillStyle = "#bbc3c3";
-        g.fillRect(x, y, 1, 48);
-      } else {
-        g.fillStyle = "#d0c9bb";
-        g.fillRect(x + 8, y + 8, 23, 31);
-        g.fillStyle = "#314653";
-        g.fillRect(x + 10, y + 10, 19, 26);
-        g.fillStyle = "#88969a";
-        g.fillRect(x + 19, y + 10, 1, 26);
-      }
-    }
-    g.fillStyle = style === 0 ? "#b6bfc0" : "#827d73";
-    g.fillRect(0, y, 512, 2);
-  }
-  const t = new T.CanvasTexture(c);
-  t.colorSpace = T.SRGBColorSpace;
-  t.wrapS = t.wrapT = T.RepeatWrapping;
-  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  return t;
-}
-const buildingMats = [0, 1, 2, 1, 2].map(
-  (style) =>
-    new T.MeshStandardMaterial({
-      map: facadeMap(style),
-      color: style===0?0x99b2c2:style===1?0xb6a18e:0xc5c7c1,
-      roughness: style === 0 ? 0.2 : 0.85,
-      metalness: style === 0 ? 0.35 : 0,
-      side: T.DoubleSide,
-    }),
+// Unique per-building material seeds, metric window bays and footprint-relative shaders.
+const buildingMats = createCityMaterials();
+// One Canada Square's surveyed height includes its crown. Build body and crown from one footprint.
+const canadaBuilding = mapData.buildings.find(
+  ([h, p]) => h > 200 && Math.hypot(p[0][0] + 295, p[0][1] + 5928) < 100,
 );
-window.setLoadingProgress(55,"Building London architecture");
-await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-for(const material of buildingMats){material.onBeforeCompile=shader=>{shader.vertexShader='varying float vBuildingHeight;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvBuildingHeight=position.y;');shader.fragmentShader='varying float vBuildingHeight;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\ndiffuseColor.rgb *= mix(0.58,1.0,smoothstep(0.0,18.0,vBuildingHeight));');};}
-const cityRoof=mat(0x777e7e,.91,.05);cityRoof.map=photo('concrete',1);
+const canadaFootprint = canadaBuilding[1].slice(0, -1);
+const canadaBounds = {
+  minX: Math.min(...canadaFootprint.map((p) => p[0])),
+  maxX: Math.max(...canadaFootprint.map((p) => p[0])),
+  minZ: Math.min(...canadaFootprint.map((p) => p[1])),
+  maxZ: Math.max(...canadaFootprint.map((p) => p[1])),
+};
+canadaBuilding[0] = 205;
+window.setLoadingProgress(55, "Building London architecture");
+await new Promise((resolve) =>
+  requestAnimationFrame(() => requestAnimationFrame(resolve)),
+);
+const cityRoof = surfaceMaterial("roof");
 const cityColliders = addCity(scene, mapData, buildingMats, cityRoof);
 cityColliders.push(
   { minX: -288, maxX: -218, minZ: -1735, maxZ: -1165, h: 21 },
   { minX: -313, maxX: -287, minZ: -1853, maxZ: -1827, h: 57 },
 );
-const architectureStats=architecturalDetails(scene,mapData.buildings);
+const architectureStats = architecturalDetails(scene, mapData.buildings);
+buildUrbanGround(scene, mapData);
 const collisions = collisionIndex(cityColliders);
-const impact = new Impact(scene);
-// Canary Wharf, positioned west of the airport; One Canada Square's pyramid.
-const pyramid = new T.Mesh(
-  new T.ConeGeometry(39, 25, 4),
-  mat(0xc2c6be, 0.3, 0.6),
+const vegetationCount = await addVegetation(
+  scene,
+  landcover,
+  [
+    ...waterData,
+    shapes
+      .at(-1)
+      .getPoints()
+      .map((p) => [p.x, -p.y]),
+  ],
+  collisions,
+  mapData.roads,
 );
-pyramid.rotation.y = Math.PI / 4;
-pyramid.position.set(-230, 232, -5950);
+const impact = new Impact(scene);
+// Crown shares the tower's bounds and sits directly on its 205 m roof.
+const canadaX = (canadaBounds.minX + canadaBounds.maxX) / 2,
+  canadaZ = (canadaBounds.minZ + canadaBounds.maxZ) / 2;
+const crownWidth =
+  Math.min(
+    canadaBounds.maxX - canadaBounds.minX,
+    canadaBounds.maxZ - canadaBounds.minZ,
+  ) * 0.93;
+const pyramid = new T.Mesh(
+  new T.ConeGeometry(crownWidth / Math.SQRT2, 30, 4),
+  mat(0xaab5b9, 0.3, 0.7),
+);
+pyramid.rotation.y = Math.PI / 4 - 0.049;
+pyramid.position.set(canadaX, 220, canadaZ);
+pyramid.castShadow = true;
 scene.add(pyramid);
+box(
+  canadaX,
+  205,
+  canadaZ,
+  crownWidth,
+  1.5,
+  crownWidth,
+  mat(0xaab5b9, 0.35, 0.6),
+);
+cityColliders.push({
+  minX: canadaX - crownWidth / 2,
+  maxX: canadaX + crownWidth / 2,
+  minZ: canadaZ - crownWidth / 2,
+  maxZ: canadaZ + crownWidth / 2,
+  h: 235,
+});
 // O2 dome and its twelve yellow masts, south-west across the Thames.
 const dome = new T.Mesh(
   new T.SphereGeometry(180, 48, 16, 0, Math.PI * 2, 0, Math.PI / 2),
   white,
 );
 dome.scale.y = 0.23;
-dome.position.set(-1350, 0, -4000);
+const o2 = geo(0.0032, 51.503);
+dome.position.copy(o2);
 scene.add(dome);
 for (let i = 0; i < 12; i++) {
   const a = (i * Math.PI) / 6,
-    x = -1350 + Math.cos(a) * 140,
-    z = -4000 + Math.sin(a) * 140;
+    x = o2.x + Math.cos(a) * 140,
+    z = o2.z + Math.sin(a) * 140;
   cylinder(1, 1.4, 87, yellow, x, 43, z);
   line(
     [
       [x, 86, z],
-      [-1350, 38, -4000],
+      [o2.x, 38, o2.z],
     ],
     0xd6cfba,
   );
 }
-// Dockside trees, instanced for a small draw-call budget.
-const treeGeo = new T.IcosahedronGeometry(1, 1),
-  treeMat = mat(0x5a6850);
-const trees = new T.InstancedMesh(treeGeo, treeMat, 650);
-const td = new T.Object3D();
-for (let i = 0; i < 650; i++) {
-  let x = (rand() - 0.5) * 8500,
-    z = rand() * 8000 - 6000;
-  if (Math.abs(x) < 570) x += x < 0 ? -700 : 700;
-  if (x > 720 && x < 1800) x = -700;
-  td.position.set(x, 5, z);
-  td.scale.set(3 + rand() * 4, 5 + rand() * 4, 3 + rand() * 4);
-  td.updateMatrix();
-  trees.setMatrixAt(i, td.matrix);
+window.setLoadingProgress(72, "Loading the Embraer 190 model");
+const aircraftAsset = await new GLTFLoader().loadAsync("/models/e190.glb");
+const aircraftTemplate = aircraftAsset.scene;
+const assetBounds = new T.Box3().setFromObject(aircraftTemplate);
+aircraftTemplate.position.set(
+  -(assetBounds.min.x + assetBounds.max.x) / 2,
+  -3.4 - assetBounds.min.y,
+  -(assetBounds.min.z + assetBounds.max.z) / 2,
+);
+aircraftTemplate.traverse((o) => {
+  if (o.isMesh) {
+    o.castShadow = true;
+    o.receiveShadow = true;
+    if (o.material) {
+      o.material.envMapIntensity = 0.5;
+      if (o.material.map)
+        o.material.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    }
+  }
+});
+function aircraft() {
+  const group = new T.Group();
+  group.add(aircraftTemplate.clone(true));
+  return group;
 }
-// Random trees removed: they intersected water and buildings.
-window.setLoadingProgress(72,"Loading the Embraer 190 model");
-const aircraftAsset=await new GLTFLoader().loadAsync('/models/e190.glb');
-const aircraftTemplate=aircraftAsset.scene;
-const assetBounds=new T.Box3().setFromObject(aircraftTemplate);
-aircraftTemplate.position.set(-(assetBounds.min.x+assetBounds.max.x)/2,-3.4-assetBounds.min.y,-(assetBounds.min.z+assetBounds.max.z)/2);
-aircraftTemplate.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;if(o.material){o.material.envMapIntensity=.5;if(o.material.map)o.material.map.anisotropy=renderer.capabilities.getMaxAnisotropy();}}});
-function aircraft(){const group=new T.Group();group.add(aircraftTemplate.clone(true));return group;}
 const plane = aircraft();
 scene.add(plane);
 for (let i = 0; i < 7; i++) {
@@ -847,9 +839,9 @@ function cinematic(t) {
   plane.visible = true;
   plane.rotation.set(0, Math.PI, 0);
   if (segment === 0) {
-    plane.position.set(0, 465 - u * 145, -6500 + u * 1500);
-    camera.position.copy(plane.position).add(new T.Vector3(-55, 20, -95));
-    camera.lookAt(plane.position.clone().add(new T.Vector3(0, 0, 40)));
+    plane.position.set(0, 340 - u * 80, -6500 + u * 1500);
+    camera.position.copy(plane.position).add(new T.Vector3(-75, 30, -105));
+    camera.lookAt(plane.position.clone().add(new T.Vector3(0, -35, 65)));
   } else if (segment === 1) {
     plane.position.set(0, 180 - u * 70, -3300 + u * 650);
     camera.position.set(-620 + u * 180, 350 - u * 55, -2650 + u * 350);
@@ -924,9 +916,21 @@ function render(now) {
       0.2,
     );
   }
+  updateShadows();
   renderer.render(scene, camera);
   renderedFrames++;
-  if(texturesReady&&renderedFrames>2&&!window.__ready&&!document.getElementById('loading').dataset.failed){window.__ready=true;window.setLoadingProgress(100,"Ready for departure");document.body.classList.remove('loading');document.getElementById('loading').classList.add('complete');setTimeout(()=>document.getElementById('loading').hidden=true,500);}
+  if (
+    texturesReady &&
+    renderedFrames > 2 &&
+    !window.__ready &&
+    !document.getElementById("loading").dataset.failed
+  ) {
+    window.__ready = true;
+    window.setLoadingProgress(100, "Ready for departure");
+    document.body.classList.remove("loading");
+    document.getElementById("loading").classList.add("complete");
+    setTimeout(() => (document.getElementById("loading").hidden = true), 500);
+  }
   requestAnimationFrame(render);
 }
 requestAnimationFrame(render);
@@ -949,16 +953,28 @@ window.sim = {
   seek(t) {
     demoTime = t;
     cinematic(t);
+    updateShadows();
     renderer.render(scene, camera);
   },
   renderAt(t) {
     manual = true;
     cinematic(t);
     waters.forEach((w) => (w.material.uniforms.time.value = t * 0.32));
+    updateShadows();
     renderer.render(scene, camera);
   },
   renderer,
   architectureStats,
+  vegetationCount,
+  landmark: { position: [canadaX, 205, canadaZ], crownWidth },
+  inspect(position, target) {
+    manual = true;
+    plane.visible = false;
+    camera.position.fromArray(position);
+    camera.lookAt(...target);
+    updateShadows();
+    renderer.render(scene, camera);
+  },
   get camera() {
     return {
       position: camera.position.toArray(),
@@ -978,7 +994,8 @@ window.sim = {
   advance(dt, k = {}) {
     keys = k;
     updateFlight(dt);
-    if (dt === 0) renderer.render(scene, camera);
+    if (dt === 0) updateShadows();
+    renderer.render(scene, camera);
   },
 };
 if (new URLSearchParams(location.search).has("demo")) start("demo");

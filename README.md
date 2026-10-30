@@ -13,7 +13,7 @@ npm run build
 npm test
 ```
 
-WebGL2 desktop browser recommended. Touch controls are provided on small screens. Initial scenery download is approximately 6 MB; building geometry is generated locally.
+WebGL2 desktop browser recommended. Touch controls are provided on small screens. Initial scenery download is approximately 9 MB; building geometry is generated locally.
 
 ## Fly
 
@@ -35,7 +35,7 @@ Wings must be level, touchdown must be inside the runway, sink rate below 4 m/s 
 
 ## Cinematic and capture
 
-Watch flythrough, or add `?demo`. Four looping 10-second shots: Canary Wharf, dockside aerial, steep final, and touchdown. H hides titles, P pauses, Escape exits. The deterministic capture script creates PNG frames and an H.264 MP4 with ffmpeg:
+Watch flythrough, or add `?demo`. Four looping 10-second shots: Canary Wharf, dockside aerial, steep final, and touchdown. H hides titles, P pauses, Escape exits. The deterministic capture script creates JPEG frames and an H.264 MP4 with ffmpeg:
 
 ```sh
 npm run dev
@@ -46,9 +46,9 @@ Install Chromium and ffmpeg, or set `CHROMIUM_PATH`. Captures go into `work/`, w
 
 ## Rendering
 
-Real London OSM footprints and roads, batched textured facades and roofs, metric scene coordinates, procedural E190 and BA livery, photographic ground surfaces, atmospheric sky and distance haze, Ultra-Water FFT slopes with planar water reflections, static scenery shadows, runway/PAPI lights, and synthesised engine audio. Flight dynamics and some scenery are approximate.
+Real London OSM footprints and roads, batched textured facades and roofs, metric scene coordinates, detailed GPL-licensed E190 model and BA livery, photographic ground surfaces, atmospheric sky and distance haze, Ultra-Water FFT slopes with planar water reflections, view-following scenery shadows, runway/PAPI lights, and synthesised engine audio. Flight dynamics and some scenery are approximate.
 
-See [sources and licenses](docs/SOURCES.md). Application: Apache-2.0. OSM-derived databases: ODbL. Vendored Ultra-Water: MIT. Photographic textures: CC0. This is an independent entertainment project.
+See [sources and licenses](docs/SOURCES.md). Application: Apache-2.0. OSM-derived databases: ODbL. Vendored Ultra-Water: MIT. Photographic surface textures: CC0. E190 aircraft assets: GPL-2.0-or-later with source included. Land-cover raster: CC BY 4.0. This is an independent entertainment project.
 
 Netlify uses `netlify.toml`: `npm run build`, publish `dist`. No server, paid map service or runtime secrets are required.
 
@@ -67,3 +67,9 @@ The renderer uses logarithmic depth for kilometre-scale scenery, separated groun
 `node scripts/check-revision.mjs` checks all four cardinal camera headings on both approaches, flight outside the old boundary, impact effects and retry cleanup, and saves 48 motion frames.
 
 Revision evidence: [chase view](https://city-landing.alexchoi.xyz/screenshots/chase.jpg), [aircraft](https://city-landing.alexchoi.xyz/screenshots/aircraft.png), [building impact](https://city-landing.alexchoi.xyz/screenshots/explosion.png), [camera turn capture](https://city-landing.alexchoi.xyz/camera-check.mp4).
+
+## Architecture and materials
+
+The city uses deterministic individual building seeds for facade tint, window bay widths, glazing, blinds and weathering. Masonry and curtain-wall shaders operate in metres; box-filtered window and brick patterns settle to their average at distance to reduce shimmer. Residential footprints receive pitched roofs where their shape supports them. Tall buildings have instanced mullions, roof parapets and plant equipment. One Canada Square’s 205 m body and 30 m pyramid share the same OSM footprint.
+
+Ground surfaces use separate asphalt, paving, roof and vegetation materials, with world-space wear and filtered joints. Land cover is derived from the attributed aerial reference. Tree placement excludes mapped water, roads and building bounds. The loading overlay remains visible until the aircraft, scenery, textures and first rendered frames are ready; failed loads offer retry.

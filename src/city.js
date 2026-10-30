@@ -1,22 +1,80 @@
 import * as T from "three";
 // Real footprints, metric wall UVs, roof triangles; batch by material, not by building.
 export function addCity(scene, data, materials, roofMaterial) {
-  const batches = materials.map(() => ({ p: [], n: [], u: [] })),
-    roofs = { p: [], n: [], u: [] };
+  const batches = materials.map(() => ({ p: [], n: [], u: [], b: [] })),
+    roofs = { p: [], n: [], u: [], b: [] };
   const colliders = [];
+  let parameters = [0, 2.6, 3.2, 10];
   function tri(b, a, c, d, n, uv) {
     for (let i = 0; i < 3; i++) {
       b.p.push(...[a, c, d][i]);
       b.n.push(...n);
       b.u.push(...uv[i]);
+      b.b.push(...parameters);
     }
   }
   for (let index = 0; index < data.buildings.length; index++) {
     const [height, poly, type] = data.buildings[index];
     if (poly.length < 4) continue;
     const h = Math.min(310, height),
-      b = batches[height > 45 ? 0 : 1 + (index % (materials.length - 1))];
+      b =
+        batches[
+          height > 45
+            ? index === 10
+              ? 6
+              : [0, 5, 0, 6][index % 4]
+            : /house|terrace/.test(type)
+              ? 2 + (index % 2)
+              : 1 + (index % 4)
+        ];
+    const rnd = ((index * 2654435761) >>> 0) / 4294967296;
+    parameters = [
+      index * 0.73 + 1,
+      height > 45 ? 1.7 + rnd * 0.8 : 2.5 + rnd * 0.7,
+      height > 45 ? 3.6 + rnd * 0.3 : 3.05,
+      height,
+    ];
     const points = poly.slice(0, -1);
+    const residential = /house|terrace/.test(type) && h < 16;
+    let roofRise = 0,
+      roofFrame = null;
+    if (residential) {
+      let best = 0,
+        angle = 0;
+      for (let j = 0; j < points.length; j++) {
+        const a = points[j],
+          b = points[(j + 1) % points.length],
+          len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        if (len > best) {
+          best = len;
+          angle = Math.atan2(b[1] - a[1], b[0] - a[0]);
+        }
+      }
+      const cs = Math.cos(angle),
+        sn = Math.sin(angle),
+        projected = points.map(([x, z]) => [x * cs + z * sn, -x * sn + z * cs]);
+      const us = projected.map((p) => p[0]),
+        vs = projected.map((p) => p[1]),
+        u0 = Math.min(...us),
+        u1 = Math.max(...us),
+        v0 = Math.min(...vs),
+        v1 = Math.max(...vs);
+      const area =
+        Math.abs(
+          points.reduce((sum, p, i) => {
+            const q = points[(i + 1) % points.length];
+            return sum + p[0] * q[1] - q[0] * p[1];
+          }, 0),
+        ) / 2;
+      if (
+        area / ((u1 - u0) * (v1 - v0)) > 0.78 &&
+        v1 - v0 < 20 &&
+        u1 - u0 < 40
+      ) {
+        roofRise = Math.min(3.2, (v1 - v0) * 0.36);
+        roofFrame = { cs, sn, u0, u1, v0, v1 };
+      }
+    }
     let minX = Infinity,
       maxX = -Infinity,
       minZ = Infinity,
@@ -35,38 +93,80 @@ export function addCity(scene, data, materials, roofMaterial) {
         v3 = [a[0], h, a[1]];
       tri(b, v0, v1, v2, normal, [
         [0, 0],
-        [length / 32, 0],
-        [length / 32, h / 32],
+        [length, 0],
+        [length, h],
       ]);
       tri(b, v0, v2, v3, normal, [
         [0, 0],
-        [length / 32, h / 32],
-        [0, h / 32],
+        [length, h],
+        [0, h],
       ]);
       minX = Math.min(minX, a[0]);
       maxX = Math.max(maxX, a[0]);
       minZ = Math.min(minZ, a[1]);
       maxZ = Math.max(maxZ, a[1]);
     }
-    const shape = points.map((p) => new T.Vector2(p[0], p[1]));
-    for (const f of T.ShapeUtils.triangulateShape(shape, [])) {
-      const p = f.map((i) => [points[i][0], h, points[i][1]]);
-      tri(
-        roofs,
-        p[2],
-        p[1],
-        p[0],
-        [0, 1, 0],
-        f.map((i) => [points[i][0] / 25, points[i][1] / 25]),
-      );
+    if (roofFrame) {
+      const { cs, sn, u0, u1, v0, v1 } = roofFrame;
+      const v = (v0 + v1) / 2,
+        inset = Math.min((u1 - u0) * 0.22, (v1 - v0) * 0.5);
+      const point = (u, v, y) => [u * cs - v * sn, y, u * sn + v * cs];
+      const a = point(u0, v0, h),
+        b = point(u1, v0, h),
+        c = point(u1, v1, h),
+        d = point(u0, v1, h),
+        r0 = point(u0 + inset, v, h + roofRise),
+        r1 = point(u1 - inset, v, h + roofRise);
+      for (const face of [
+        [a, b, r1],
+        [a, r1, r0],
+        [b, c, r1],
+        [c, d, r0],
+        [c, r0, r1],
+        [d, a, r0],
+      ]) {
+        const normal = new T.Vector3()
+          .subVectors(new T.Vector3(...face[1]), new T.Vector3(...face[0]))
+          .cross(
+            new T.Vector3().subVectors(
+              new T.Vector3(...face[2]),
+              new T.Vector3(...face[0]),
+            ),
+          )
+          .normalize();
+        if (normal.y < 0) {
+          face.reverse();
+          normal.negate();
+        }
+        tri(
+          roofs,
+          ...face,
+          normal.toArray(),
+          face.map((p) => [p[0] / 4, p[2] / 4]),
+        );
+      }
+    } else {
+      const shape = points.map((p) => new T.Vector2(p[0], p[1]));
+      for (const f of T.ShapeUtils.triangulateShape(shape, [])) {
+        const p = f.map((i) => [points[i][0], h, points[i][1]]);
+        tri(
+          roofs,
+          p[2],
+          p[1],
+          p[0],
+          [0, 1, 0],
+          [p[2], p[1], p[0]].map((v) => [v[0] / 25, v[2] / 25]),
+        );
+      }
     }
-    if (h > 2) colliders.push({ minX, maxX, minZ, maxZ, h });
+    if (h > 2) colliders.push({ minX, maxX, minZ, maxZ, h: h + roofRise });
   }
   function mesh(b, m) {
     const g = new T.BufferGeometry();
     g.setAttribute("position", new T.Float32BufferAttribute(b.p, 3));
     g.setAttribute("normal", new T.Float32BufferAttribute(b.n, 3));
     g.setAttribute("uv", new T.Float32BufferAttribute(b.u, 2));
+    g.setAttribute("building", new T.Float32BufferAttribute(b.b, 4));
     g.computeBoundingSphere();
     const o = new T.Mesh(g, m);
     o.castShadow = true;
