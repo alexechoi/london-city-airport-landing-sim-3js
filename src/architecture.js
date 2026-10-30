@@ -61,22 +61,11 @@ export function architecturalDetails(scene, buildings) {
       push(caps, x, height + 0.3, z, len + 0.25, 0.6, 0.3, angle);
       if (tall) {
         push(trim, a[0], height / 2, a[1], 0.28, height, 0.28);
-        for (let y = floorHeight; y < height; y += floorHeight)
-          push(trim, x, y, z, len, 0.12, 0.22, angle);
-        if (len > 12)
-          for (let k = 5; k < len; k += 5) {
-            const u = k / len;
-            push(
-              trim,
-              a[0] + dx * u,
-              height / 2,
-              a[1] + dz * u,
-              0.12,
-              height,
-              0.18,
-              angle,
-            );
-          }
+        // Most mullions are represented by the facade normal maps. Generic
+        // geometry at unrelated intervals produced conflicting grids and shimmer.
+        if (i === 11)
+          for (let y = floorHeight; y < height; y += floorHeight)
+            push(trim, x, y, z, len, 0.12, 0.22, angle);
       }
     }
     const xs = p.map((v) => v[0]),

@@ -48,9 +48,9 @@ Install Chromium and ffmpeg, or set `CHROMIUM_PATH`. Captures go into `work/`, w
 
 ## Rendering
 
-Real London OSM footprints, surrounding districts, waterways, green spaces and roads, batched textured facades and roofs, metric scene coordinates, detailed GPL-licensed E190 model and BA livery, photographic ground surfaces, photographic HDR daylight and matching horizon haze, Ultra-Water FFT slopes with planar water reflections, HDR multisampling and SMAA, view-following scenery shadows, runway/PAPI lights, and synthesised engine audio. Flight dynamics and some scenery are approximate.
+Real London OSM footprints, surrounding districts, waterways, green spaces and roads, batched PBR facades with aligned colour, normal, roughness and metalness maps, textured roofs, metric scene coordinates, detailed GPL-licensed E190 model and BA livery, photographic ground surfaces, photographic HDR daylight and matching horizon haze, Ultra-Water FFT slopes with planar water reflections, HDR multisampling and SMAA, view-following scenery shadows, runway/PAPI lights, and synthesised engine audio. Flight dynamics and some scenery are approximate.
 
-See [sources and licenses](docs/SOURCES.md). Application: Apache-2.0. OSM-derived databases: ODbL. Vendored Ultra-Water: MIT. Photographic surface textures: CC0. E190 aircraft assets: GPL-2.0-or-later with source included. Land-cover raster: CC BY 4.0. This is an independent entertainment project.
+See [sources and licenses](docs/SOURCES.md). Application: Apache-2.0. OSM-derived databases: ODbL. Vendored Ultra-Water: MIT. Surface photography and authored ambientCG facade textures: CC0. E190 aircraft assets: GPL-2.0-or-later with source included. Land-cover raster: CC BY 4.0. This is an independent entertainment project.
 
 Netlify uses `netlify.toml`: `npm run build`, publish `dist`. No server, paid map service or runtime secrets are required.
 
@@ -74,7 +74,7 @@ Revision evidence: [chase view](https://city-landing.alexchoi.xyz/screenshots/ch
 
 ## Architecture and materials
 
-The city uses deterministic individual building seeds for facade tint, window bay widths, glazing, blinds and weathering. Masonry and curtain-wall shaders operate in metres; box-filtered window and brick patterns settle to their average at distance to reduce shimmer. Residential footprints receive pitched roofs where their shape supports them. Tall buildings have instanced mullions, roof parapets and plant equipment. One Canada Square’s 205 m body and 30 m pyramid share the same OSM footprint.
+The city uses six authored PBR facade families with recessed frames, blinds, brick and curtain-wall details. Per-building seeds vary tint, window bay widths, storey heights and texture offsets. Curtain walls reflect a static Canary Wharf city probe. Normal, roughness, metalness and occlusion maps share metric UVs; mipmaps and anisotropic filtering reduce distant shimmer. Landmark shaders retain filtered geometric patterns. Residential footprints receive pitched roofs where their shape supports them. Tall buildings have roof parapets, corner trim and plant equipment. One Canada Square’s 205 m body and 30 m pyramid share the same OSM footprint.
 
 Ground surfaces use separate asphalt, paving, roof and vegetation materials, with world-space wear and filtered joints. Land cover is derived from the attributed aerial reference. Tree placement excludes mapped water, roads and building bounds. The loading overlay remains visible until the aircraft, scenery, textures and first rendered frames are ready; failed loads offer retry.
 

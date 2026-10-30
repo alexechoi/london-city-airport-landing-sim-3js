@@ -1,4 +1,5 @@
 import * as T from "three";
+import { facadeMaterial } from "./facade-materials.js";
 // WebGL implementation of the material techniques in Slop New York's tsl-materials.js.
 // The box-filtered pulse is adapted from that MIT-licensed source; see vendor/slop-new-york/LICENSE.
 const common = /* glsl */ `
@@ -36,6 +37,18 @@ export function createCityMaterials() {
     [0xadbfc5, 0x3e7e91, true],
   ];
   return styles.map(([wall, glass, modern], idx) => {
+    const facades = {
+      0: ["Facade001", { modern: true }],
+      1: ["Facade018A", { tint: 0xe4dfd5 }],
+      2: ["Facade020A", {}],
+      3: ["Facade018A", {}],
+      4: ["Facade019A", { tint: 0xe0e1dd }],
+      5: ["Facade005", { modern: true }],
+      6: ["Facade006", { modern: true }],
+      8: ["Facade018A", { context: true }],
+      10: ["Facade001", { modern: true, tint: 0xc0e2ea }],
+    };
+    if (facades[idx]) return facadeMaterial(...facades[idx]);
     const mat = new T.MeshStandardMaterial({
       roughness: 0.7,
       metalness: 0.08,

@@ -1,6 +1,7 @@
 import "./style.css";
 import { initCustomStart } from "./custom-start.js";
 import { addDaylightSky } from "./daylight.js";
+import { captureCityReflections } from "./city-reflections.js";
 import { createPost } from "./post.js";
 import { addStreetDetails } from "./street-details.js";
 import { buildO2 } from "./o2.js";
@@ -382,6 +383,13 @@ cylinder(13, 11, 2, white, -300, 49, -1840);
 box(-300, 56, -1840, 1, 13, 1, dark);
 // Unique per-building material seeds, metric window bays and footprint-relative shaders.
 const buildingMats = createCityMaterials();
+// Explicit maps preserve each facade's reflection strength. Scene.environmentIntensity
+// otherwise overrides MeshStandardMaterial.envMapIntensity in Three.js.
+for (const material of buildingMats) {
+  if (!material.userData.pbrFacade) continue;
+  material.envMap = daylight;
+  material.envMapRotation.y = scene.environmentRotation.y;
+}
 // Enrich only the original two-floor fallback; explicit OSM heights remain unchanged.
 for (let i = 0; i < mapData.buildings.length; i++) {
   const b = mapData.buildings[i];
@@ -955,6 +963,7 @@ function intro(t) {
     camera.lookAt(-80, 0, -1000);
   }
 }
+let cityReflectionsReady = false;
 let last = performance.now();
 let manual = false;
 function render(now) {
@@ -986,6 +995,16 @@ function render(now) {
       audio.currentTime,
       0.2,
     );
+  }
+  if (texturesReady && !cityReflectionsReady) {
+    window.setLoadingProgress(96, "Reflecting the Canary Wharf skyline");
+    const savedPosition = camera.position.clone();
+    camera.position.set(-430, 125, -5680);
+    updateShadows();
+    captureCityReflections(renderer, scene, buildingMats, waters, plane, camera.position);
+    camera.position.copy(savedPosition);
+    shadowFocus.set(Infinity, 0, Infinity);
+    cityReflectionsReady = true;
   }
   updateShadows();
   post.render();
