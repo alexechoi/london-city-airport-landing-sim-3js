@@ -6,7 +6,9 @@ const browser = await chromium.launch({
   executablePath: "/usr/bin/chromium",
   args: [
     "--no-sandbox",
-    "--use-angle=swiftshader",
+    "--use-gl=angle",
+    "--use-angle=" + (process.env.CAPTURE_ANGLE || "swiftshader"),
+    "--ignore-gpu-blocklist",
     "--enable-unsafe-swiftshader",
   ],
 });
@@ -14,9 +16,21 @@ const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
 page.setDefaultTimeout(120000);
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
-page.on("console",m=>{if(m.type()==="error")errors.push(m.text());});
+page.on("console", (m) => {
+  if (m.type() === "error") errors.push(m.text());
+});
 await page.goto(process.env.SITE_URL || "http://localhost:5173");
-await page.waitForFunction(() => {if(window.__ready){sim.freeze();return true;}return false;}, null, { timeout: 180000 });
+await page.waitForFunction(
+  () => {
+    if (window.__ready) {
+      sim.freeze();
+      return true;
+    }
+    return false;
+  },
+  null,
+  { timeout: 180000 },
+);
 await page.waitForLoadState("networkidle");
 await page.evaluate(() => sim.freeze());
 for (const runway of ["09", "27"])

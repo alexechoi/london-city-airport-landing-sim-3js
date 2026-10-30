@@ -7,6 +7,8 @@ from pathlib import Path
 import mapbox_vector_tile
 ROOT=Path(__file__).resolve().parents[1]
 A=math.radians(2.8);N=2**14
+TILES=list((ROOT/'work/vector-tiles').glob('*.pbf'))
+if not TILES:raise SystemExit('Context tile cache is missing; run fetch-context.py first.')
 
 def world(lon,lat):
     e=(lon-.06602)*111320*math.cos(math.radians(51.505));n=(lat-51.50494)*111320
@@ -24,7 +26,7 @@ path.write_text(json.dumps(core,separators=(',',':')))
 print('Core:',before,'->',len(core['roads']))
 
 blocked_segments=set()
-for tile in (ROOT/'work/vector-tiles').glob('*.pbf'):
+for tile in TILES:
     tx,ty=map(int,tile.stem.split('-'))
     layer=mapbox_vector_tile.decode(tile.read_bytes(),default_options={'y_coord_down':True}).get('transportation')
     if not layer:continue

@@ -31,6 +31,14 @@ window.setLoadingProgress=function(value,label){const el=document.getElementById
 window.loadingFailed=function(){const el=document.getElementById('loading');if(el.hidden)return;el.dataset.failed='true';el.querySelector('h2').textContent='Unable to start.';document.getElementById('load-stage').textContent='Check your connection and WebGL support, then retry.';document.getElementById('load-retry').hidden=false;};
 addEventListener('error',window.loadingFailed);addEventListener('unhandledrejection',window.loadingFailed);
     </script>
+    <dialog id="custom-start" aria-labelledby="custom-title">
+      <div class="custom-heading"><div><small class="custom-eyebrow">CUSTOM APPROACH · HARD MODE</small><h2 id="custom-title">Make your own approach.</h2><p>Choose any starting point, heading and altitude. Find the runway and bring it home.</p></div><button id="close-custom" aria-label="Close custom approach">✕</button></div>
+      <div class="custom-layout"><div class="custom-map-wrap"><canvas id="start-map" tabindex="0" aria-label="Starting position map. Click to place aircraft; use arrow keys to move the start point."></canvas><div class="map-tools"><button id="map-zoom-in" aria-label="Zoom in">+</button><button id="map-zoom-out" aria-label="Zoom out">−</button><button id="map-reset">Reset view</button></div><div class="map-hint">CLICK TO PLACE · DRAG TO PAN · SCROLL TO ZOOM</div></div>
+      <div class="custom-options"><label for="start-runway">LANDING RUNWAY</label><select id="start-runway"><option value="09">09 · From the west</option><option value="27">27 · From the east</option></select>
+      <label for="start-bearing">HEADING <output id="start-bearing-value">093°</output></label><input type="range" id="start-bearing" min="0" max="359" value="93"><button id="aim-runway">Point toward runway</button>
+      <label for="start-altitude">STARTING ALTITUDE · FEET</label><input id="start-altitude" type="number" min="300" max="6000" step="100" value="2000">
+      <div class="start-summary"><strong id="start-distance"></strong><span id="start-coordinates"></span><span>Airborne at 140 knots · gear down</span></div><p id="start-warning" role="status"></p><button class="primary" id="launch-custom">Start challenge →</button></div></div>
+    </dialog>
     <canvas id="world"></canvas>
     <div id="vignette"></div>
     <header>
@@ -62,6 +70,7 @@ addEventListener('error',window.loadingFailed);addEventListener('unhandledreject
           Take the controls <span>→</span></button
         ><button id="demo" class="secondary">Watch flythrough →</button>
       </div>
+      <button id="custom-mode" class="custom-mode">CUSTOM START <span>HARD MODE ↗</span></button>
       <div class="specs">
         <div>
           <b>1,508<span>m</span></b

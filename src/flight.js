@@ -45,9 +45,11 @@ export function stepFlight(s, k, dt) {
     0,
     Math.min(1, s.throttle + ((k.w ? 1 : 0) - (k.s ? 1 : 0)) * dt * 0.24),
   );
-  s.bank += ((k.ArrowLeft ? 1 : 0) - (k.ArrowRight ? 1 : 0)) * dt * 22;
-  s.bank *= Math.exp(-dt * 0.65);
-  s.bank = Math.max(-35, Math.min(35, s.bank));
+  const rollInput = (k.ArrowLeft ? 1 : 0) - (k.ArrowRight ? 1 : 0);
+  // Full aileron authority while held; gentle levelling only after release.
+  if (rollInput) s.bank += rollInput * dt * 60;
+  else s.bank *= Math.exp(-dt * 0.55);
+  s.bank = Math.max(-75, Math.min(75, s.bank));
   s.pitch += ((k.ArrowDown ? 1 : 0) - (k.ArrowUp ? 1 : 0)) * dt * 4;
   s.pitch = Math.max(-18, Math.min(12, s.pitch));
   if (s.ground) {
@@ -57,11 +59,31 @@ export function stepFlight(s, k, dt) {
     return;
   }
   s.speed += (92 + s.throttle * 70 - s.speed) * dt * 0.15;
-  s.heading -= s.bank * dt * 0.026;
+  // Coordinated turn rate: tighter turns at larger bank and lower airspeed.
+  const airspeed = Math.max(70, s.speed) * 0.5144;
+  s.heading -=
+    (((9.81 * Math.tan((s.bank * Math.PI) / 180)) / airspeed) * dt * 180) /
+    Math.PI;
   const a = (s.heading * Math.PI) / 180;
   s.x += Math.sin(a) * s.speed * 0.5144 * dt;
   s.z -= Math.cos(a) * s.speed * 0.5144 * dt;
   s.vs = s.speed * 0.5144 * Math.sin((s.pitch * Math.PI) / 180);
   if (s.speed < 100) s.vs -= (100 - s.speed) * 0.35;
   s.y += s.vs * dt;
+}
+
+export function customFlightState(config, runway = "09") {
+  return {
+    ...initialFlight(),
+    x: runway === "09" ? -config.x : config.x,
+    z: runway === "09" ? -1508 - config.z : config.z,
+    y: config.altitudeFt * 0.3048,
+    heading:
+      ((config.bearing - (runway === "09" ? 92.8 : 272.8) + 540) % 360) - 180,
+    pitch: 0,
+    bank: 0,
+    vs: 0,
+    speed: 140,
+    throttle: (140 - 92) / 70,
+  };
 }

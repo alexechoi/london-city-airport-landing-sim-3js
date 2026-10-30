@@ -31,6 +31,8 @@ Runway **09, from the west over Canary Wharf**, is the default. Select **27** fo
 | M | Sound on / off |
 | Escape | Return to title |
 
+Custom Start opens the hard-mode map. Click a starting point, set a compass heading and altitude, then launch airborne at 140 knots. Drag to pan, scroll or use +/− to zoom; arrow keys move the selected point. Retry preserves your custom start. Normal approach buttons return to the standard setup. Banking reaches ±75° with 60°/s roll authority; turn rate responds to bank and airspeed.
+
 Wings must be level, touchdown must be inside the runway, sink rate below 4 m/s and speed below 150 knots. Alignment and sink rate determine your score. The runway is narrow: use small inputs. Buildings, including low-rise buildings and the terminal, are collidable. Building strikes trigger a fireball, smoke, debris and (when sound is enabled) impact audio. Background-tab play pauses automatically; press P to resume.
 
 ## Cinematic and capture

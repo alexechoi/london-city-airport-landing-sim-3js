@@ -1,4 +1,5 @@
 import "./style.css";
+import { initCustomStart } from "./custom-start.js";
 import { addDaylightSky } from "./daylight.js";
 import { createPost } from "./post.js";
 import { addStreetDetails } from "./street-details.js";
@@ -54,7 +55,12 @@ import {
   OceanSim,
   defaultOceanParams,
 } from "./vendor/ultra-water/water/OceanSim.js";
-import { initialFlight, stepFlight, landingVerdict } from "./flight.js";
+import {
+  initialFlight,
+  stepFlight,
+  landingVerdict,
+  customFlightState,
+} from "./flight.js";
 const $ = (id) => document.getElementById(id);
 const gl = $("world").getContext("webgl2", {
   antialias: true,
@@ -546,12 +552,14 @@ const airportBatch = mergeStaticMeshes(airportMeshes);
 airportMeshes.forEach((o) => scene.remove(o));
 scene.add(airportBatch);
 let approach = "09";
+let customStart = null;
 function worldPos(x, y, z) {
   return approach === "09"
     ? new T.Vector3(-x, y, -1508 - z)
     : new T.Vector3(x, y, z);
 }
 function choose(v) {
+  customStart = null;
   approach = v;
   $("west").classList.toggle("selected", v === "09");
   $("east").classList.toggle("selected", v === "27");
@@ -602,13 +610,32 @@ function start(m) {
     flight.z = 6000;
     flight.y = 582;
   }
+  if (m === "fly" && customStart)
+    Object.assign(flight, customFlightState(customStart, approach));
   demoTime = 0;
   result = null;
   paused = false;
   keys = {};
   plane.visible = true;
 }
-$("fly").onclick = () => start("fly");
+$("fly").onclick = () => {
+  customStart = null;
+  start("fly");
+};
+const customMode = initCustomStart({
+  buildings: [...mapData.buildings, ...contextData.buildings],
+  roads: [...mapData.roads, ...contextData.roads],
+  water: waterData,
+  parks: parkData,
+  getRunway: () => approach,
+  validate: (p) => collisions.hit(p, p),
+  onStart: (config) => {
+    choose(config.runway);
+    customStart = config;
+    start("fly");
+  },
+});
+$("custom-mode").onclick = () => customMode.open();
 $("demo").onclick = () => start("demo");
 $("restart").onclick = $("again").onclick = () => start("fly");
 $("camera").onclick = () => (view = (view + 1) % 3);
@@ -827,22 +854,37 @@ function updateFlight(dt) {
   $("alt").textContent = Math.max(0, Math.round((flight.y - 4.5) * 3.28084));
   $("vs").textContent = Math.round(flight.vs * 196.85);
   $("thrust").style.width = flight.throttle * 100 + "%";
-  $("distance").textContent = (Math.max(0, flight.z) / 1852).toFixed(1) + " NM";
+  $("distance").textContent =
+    (
+      (customStart && !flight.ground
+        ? Math.hypot(flight.x, flight.z)
+        : Math.max(0, flight.z)) / 1852
+    ).toFixed(1) + " NM";
   const ideal = Math.max(0, flight.z) * Math.tan((5.5 * Math.PI) / 180) + 4.5,
     err = flight.y - ideal;
+  const runwayBearing = (Math.atan2(-flight.x, flight.z) * 180) / Math.PI;
+  const bearingError = ((runwayBearing - flight.heading + 540) % 360) - 180;
+  const customCue =
+    Math.abs(bearingError) < 12
+      ? "RUNWAY AHEAD · JOIN FINAL"
+      : bearingError < 0
+        ? "TURN LEFT TOWARD RUNWAY"
+        : "TURN RIGHT TOWARD RUNWAY";
   $("guide").textContent = paused
     ? "PAUSED · P TO RESUME"
     : flight.ground
       ? "HOLD SPACE TO BRAKE"
-      : flight.y < 25
-        ? "FLARE · GENTLY RAISE THE NOSE"
-        : Math.abs(flight.x) > 18
-          ? "ALIGN WITH THE CENTRELINE"
-          : err > 18
-            ? "TOO HIGH · LOWER THE NOSE"
-            : err < -18
-              ? "TOO LOW · RAISE THE NOSE"
-              : "ON GLIDESLOPE";
+      : customStart && (flight.z < 0 || Math.abs(flight.x) > 300)
+        ? customCue
+        : flight.y < 25
+          ? "FLARE · GENTLY RAISE THE NOSE"
+          : Math.abs(flight.x) > 18
+            ? "ALIGN WITH THE CENTRELINE"
+            : err > 18
+              ? "TOO HIGH · LOWER THE NOSE"
+              : err < -18
+                ? "TOO LOW · RAISE THE NOSE"
+                : "ON GLIDESLOPE";
   $("status").textContent = flight.ground
     ? "TOUCHDOWN"
     : flight.speed < 100
@@ -971,6 +1013,9 @@ addEventListener("resize", () => {
 });
 window.sim = {
   start,
+  get customStart() {
+    return customStart;
+  },
   get flight() {
     return flight;
   },
