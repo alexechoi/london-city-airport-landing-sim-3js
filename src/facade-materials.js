@@ -38,7 +38,7 @@ export function facadeMaterial(
     aoMapIntensity: 0.75,
     envMapIntensity: modern ? 1.25 : 0.45,
   });
-  material.normalScale.set(modern ? 0.12 : 0.65, modern ? 0.12 : 0.65);
+  material.normalScale.set(modern ? 0.035 : 0.65, modern ? 0.035 : 0.65);
   material.userData.pbrFacade = true;
   material.userData.reflectiveFacade = modern;
   material.customProgramCacheKey = () => `pbr-facade-${name}-${context}`;

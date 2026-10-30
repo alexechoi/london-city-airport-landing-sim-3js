@@ -18,7 +18,7 @@ export function addCity(scene, data, materials, roofMaterial, seedOffset = 0) {
   for (let localIndex = 0; localIndex < data.buildings.length; localIndex++) {
     const index = data.indices?.[localIndex] ?? localIndex;
     const [height, poly, type] = data.buildings[localIndex];
-    if (poly.length < 4 || data.buildings[localIndex][4] === "o2-service")
+    if (poly.length < 4 || data.buildings[localIndex][4])
       continue;
     const h = Math.min(310, height),
       b =

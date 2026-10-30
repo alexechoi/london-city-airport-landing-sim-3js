@@ -109,7 +109,7 @@ export function initCustomStart({
       c.altitudeFt < 300 ||
       c.altitudeFt > 6000;
     $("start-warning").textContent = hit
-      ? "Above buildings here: choose at least " +
+      ? hit.reason || "Above buildings here: choose at least " +
         Math.ceil((hit.h + 30) / 0.3048 / 100) * 100 +
         " ft."
       : invalid

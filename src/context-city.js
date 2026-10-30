@@ -5,7 +5,7 @@ export function addContextCity(scene, data, materials, roof) {
   // Keep a small set of shared batches, but retain glass, brick, stone and
   // industrial identities when a custom flight leaves the central district.
   materials = materials.map((m, i) =>
-    [0, 5, 6, 10].includes(i) ? materials[6]
+    [0, 5, 6, 10].includes(i) ? materials[i===10?0:i]
       : i === 2 ? materials[2]
       : i === 4 ? materials[4]
       : i === 7 ? materials[7]

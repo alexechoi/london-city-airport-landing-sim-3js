@@ -1,0 +1,37 @@
+import { chromium } from 'playwright';
+import assert from 'node:assert/strict';
+import {mkdir} from 'node:fs/promises';
+await mkdir('work/features',{recursive:true});
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--use-gl=angle','--use-angle='+ (process.env.CAPTURE_ANGLE||'gl-egl'),'--ignore-gpu-blocklist','--enable-unsafe-swiftshader']});
+const p=await browser.newPage({viewport:{width:1280,height:800}});p.setDefaultTimeout(240000);
+const errors=[];p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+await p.goto(process.env.SITE_URL||'http://localhost:4173');
+await p.waitForFunction(()=>{if(window.__ready){sim.freeze();return true;}return false;});
+await p.waitForFunction(()=>document.getElementById('loading').hidden);
+for(const runway of ['09','27']) {
+ await p.evaluate(r=>{sim.choose(r);sim.start('fly');sim.setFlight({x:0,z:3000,y:550,heading:0});sim.advance(0);},runway);
+ const camera=await p.evaluate(()=>sim.camera.position);
+ assert.ok(Math.abs(camera[0])<.01,'default camera centered');
+ await p.click('#camera');await p.evaluate(()=>sim.advance(0));
+ assert.ok(Math.abs((await p.evaluate(()=>sim.camera.position))[0])>10,'offset camera remains selectable');
+ await p.evaluate(()=>{sim.setFlight({x:0,z:-300,y:4.4,speed:115,pitch:0,vs:-1,bank:0,heading:0});sim.advance(0);});
+ assert.equal(await p.evaluate(()=>sim.flight.ground),true);
+ await p.evaluate(()=>{for(let i=0;i<720;i++)sim.advance(1/60,{' ':true});sim.advance(0);});
+ assert.equal(await p.evaluate(()=>sim.flight.done),false,'stopping after landing does not end session');
+ await p.screenshot({path:`work/features/landed-${runway}.png`});
+ await p.evaluate(r=>{sim.setFlight({x:r==='09'?171:-171,z:r==='09'?-84:-1424,heading:r==='09'?90:-90,speed:0});sim.advance(0);},runway);
+ assert.equal(await p.locator('#result-title').textContent(),'Parked at gate 4.');
+ await p.screenshot({path:`work/features/gate-${runway}.png`});
+}
+await p.evaluate(()=>{sim.choose('27');sim.start('fly');sim.setFlight({x:5900,z:0,y:800,heading:90});sim.advance(0);});
+assert.match(await p.locator('#guide').textContent(),/TURN BACK/);
+assert.ok(await p.evaluate(()=>sim.fogDensity>.0005));
+await p.screenshot({path:'work/features/boundary-fog.png'});
+await p.evaluate(()=>{sim.setFlight({x:6300});sim.advance(0);});
+assert.equal(await p.locator('#result-title').textContent(),'Flight area exited.');
+await p.click('#again');assert.equal(await p.evaluate(()=>sim.flight.done),false);
+const traffic=await p.evaluate(()=>{const a=sim.streetStats.sample();sim.advance(2);return [a,sim.streetStats.sample()];});
+assert.ok(traffic[0].some((a,i)=>Math.hypot(a[0]-traffic[1][i][0],a[1]-traffic[1][i][1])>5));
+assert.deepEqual(errors,[]);
+console.log('PASS: centered/offset cameras, both landings continue to taxi, gate parking, fogged boundary end/retry, moving road traffic.');
+await browser.close();

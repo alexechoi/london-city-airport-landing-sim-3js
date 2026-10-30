@@ -1,4 +1,9 @@
 import "./style.css";
+import { cinematicPose, TOUR_TITLES } from "./cinematic.js";
+import { reserveLandmarks, buildLondonLandmarks } from "./london-landmarks.js";
+import { addBoundaryWeather } from "./weather.js";
+import { airfieldMaterial } from "./airfield-materials.js";
+import { REGION, regionClearance, GATE, atGate, onAirportPavement } from "./flight-region.js";
 import { initCustomStart } from "./custom-start.js";
 import { addDaylightSky } from "./daylight.js";
 import { captureCityReflections } from "./city-reflections.js";
@@ -91,7 +96,8 @@ renderer.toneMappingExposure = 0.9;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = T.PCFShadowMap;
 const scene = new T.Scene();
-scene.fog = new T.FogExp2(0xb8c6cf, 0.00012);
+scene.fog = new T.FogExp2(0xb8c6cf, 0.00010);
+const weather = addBoundaryWeather(scene);
 const camera = new T.PerspectiveCamera(
   48,
   innerWidth / innerHeight,
@@ -133,9 +139,9 @@ function rand() {
 }
 const mat = (c, r = 0.8, m = 0) =>
   new T.MeshStandardMaterial({ color: c, roughness: r, metalness: m });
-const grass = mat(0x777b54),
-  concrete = mat(0xa19e8e),
-  asphalt = mat(0x343b3b),
+const grass = airfieldMaterial("grass"),
+  concrete = airfieldMaterial("concrete"),
+  asphalt = airfieldMaterial("asphalt"),
   white = mat(0xe3ded0),
   glass = mat(0x60818c, 0.23, 0.65),
   dark = mat(0x283b48, 0.45, 0.3),
@@ -179,10 +185,7 @@ function photo(url, repeat) {
   t.anisotropy = renderer.capabilities.getMaxAnisotropy();
   return t;
 }
-const paving = photo("concrete", 20);
-concrete.map = paving;
-grass.map = photo("grass", 15);
-asphalt.map = photo("asphalt", 8);
+
 const normalCanvas = document.createElement("canvas");
 normalCanvas.width = normalCanvas.height = 128;
 const ng = normalCanvas.getContext("2d"),
@@ -289,7 +292,8 @@ renderer.shadowMap.needsUpdate = true;
 // Raised runway island, quays, parallel taxiway, apron.
 box(0, 0, -754, 170, 2, 1610, grass);
 box(0, 1.04, -754, 30, 0.14, 1508, asphalt);
-box(-63, 0.8, -754, 26, 0.2, 1508, concrete);
+box(-63, 0.98, -754, 30, 0.2, 1508, asphalt);
+for (const z of [-150,-600,-1250]) box(-31.5, 1, z, 63, .16, 30, asphalt);
 box(-129, 0, -1400, 175, 2, 760, concrete);
 box(-167, 0, -825, 60, 2, 420, concrete);
 for (const x of [-87, 87]) box(x, -0.1, -754, 3, 3, 1608, concrete);
@@ -345,20 +349,26 @@ for (let z = 40; z < 400; z += 30) {
 for (let x = -34; x > -48; x -= 4) bulb(x, 2, -220, x < -40 ? redglow : glow);
 line(
   [
-    [-62, 1.05, 0],
-    [-62, 1.05, -1480],
+    [-62, 1.13, 0],
+    [-62, 1.13, -1480],
   ],
   0xdbc174,
 );
-for (const z of [-150, -600, -1250])
-  line(
-    [
-      [-62, 1.1, z],
-      [-55, 1.1, z - 40],
-      [-15, 1.2, z - 75],
-    ],
-    0xdbc174,
-  );
+for (const z of [-150, -600, -1250]) {
+  box(-31.5, 1.13, z, 63, .015, .22, yellow);
+  for (const x of [-24,-26]) box(x,1.14,z,.15,.015,28,yellow);
+}
+// Continuous taxi route and a clear stand reserved for the player.
+box(-63,1.13,-754,.22,.015,1508,yellow);
+box(-107,1.13,-1250,88,.015,.22,yellow);
+box(-108,1.13,-1337,.22,.015,174,yellow);
+box(-140,1.13,-1424,64,.015,.22,yellow);
+box(-182,1.14,-1424,.3,.015,12,yellow);
+for (let i=0;i<7;i++) {
+  const z=-1220-i*68;
+  label(String(i+1),-190,1.15,z,8,10,"#e4c566");
+  box(-166,1.12,z,56,.015,.18,yellow);
+}
 // Terminal: glazed frontage, sawtooth roof, passenger piers and ramp equipment.
 box(-255, 9, -1450, 65, 18, 570, concrete);
 box(-218, 10, -1450, 4, 15, 555, glass);
@@ -422,6 +432,13 @@ const o2Services = mapData.buildings.filter((b, i) => {
   }
   return false;
 });
+// The hand-built airport replaces OSM blocks on the runway and apron.
+for (const b of mapData.buildings) {
+  const p=b[1], x=p.reduce((n,v)=>n+v[0],0)/p.length, z=p.reduce((n,v)=>n+v[1],0)/p.length;
+  if (x>-330&&x<85&&z>-1800&&z<25) b[4]="bespoke";
+}
+reserveLandmarks(mapData, contextData);
+const cityModels = buildLondonLandmarks(scene, daylight);
 const cityRoof = surfaceMaterial("roof");
 const cityColliders = addCityCells(scene, mapData, buildingMats, cityRoof);
 cityColliders.push(
@@ -458,6 +475,7 @@ for (let i = 0; i < 12; i++) {
     h: 104,
   });
 }
+cityColliders.push(...cityModels.colliders);
 const collisions = collisionIndex(cityColliders);
 const vegetationCount = await addVegetation(
   scene,
@@ -550,6 +568,7 @@ function aircraft() {
 const plane = aircraft();
 scene.add(plane);
 for (let i = 0; i < 7; i++) {
+  if (i === 3) continue; // Gate 4 is reserved for the player.
   const a = aircraft();
   a.position.set(-151, 4, -1220 - i * 68);
   a.rotation.y = Math.PI / 2;
@@ -608,6 +627,7 @@ $("sound").onclick = () => {
 };
 function start(m) {
   impact.reset();
+  view = 0;
   mode = m;
   document.body.classList.add("play");
   $("hud").hidden = m !== "fly";
@@ -636,7 +656,7 @@ const customMode = initCustomStart({
   water: waterData,
   parks: parkData,
   getRunway: () => approach,
-  validate: (p) => collisions.hit(p, p),
+  validate: (p) => regionClearance(p)<100 ? {reason:"Choose a point inside the London flying area."} : collisions.hit(p, p),
   onStart: (config) => {
     choose(config.runway);
     customStart = config;
@@ -646,7 +666,7 @@ const customMode = initCustomStart({
 $("custom-mode").onclick = () => customMode.open();
 $("demo").onclick = () => start("demo");
 $("restart").onclick = $("again").onclick = () => start("fly");
-$("camera").onclick = () => (view = (view + 1) % 3);
+$("camera").onclick = () => (view = (view + 1) % 4);
 function exit() {
   impact.reset();
   mode = "intro";
@@ -662,7 +682,7 @@ addEventListener("keydown", (e) => {
   if (e.repeat) return;
   if (e.key === "Escape") exit();
   if (e.key.toLowerCase() === "r" && mode === "fly") start("fly");
-  if (e.key.toLowerCase() === "c") view = (view + 1) % 3;
+  if (e.key.toLowerCase() === "c") view = (view + 1) % 4;
   if (e.key.toLowerCase() === "p") paused = !paused;
   if (e.key.toLowerCase() === "h") {
     hideTitles = !hideTitles;
@@ -714,13 +734,15 @@ function report(crash = false) {
   flight.done = true;
   $("result").hidden = false;
   $("result-title").textContent = crash
-    ? flight.crashed
+    ? flight.outOfRange
+      ? "Flight area exited."
+      : flight.crashed
       ? "Aircraft lost."
       : "Approach missed."
-    : "Welcome to London.";
+    : "Parked at gate 4.";
   $("result-copy").textContent = crash
     ? result?.reason || "Runway overrun. Apply the brakes after touchdown."
-    : `Touchdown ${Math.round(-flight.touchZ)} m past the threshold · ${Math.round(Math.abs(flight.touchVs) * 196.85)} ft/min`;
+    : `Gate 4 reached · Touchdown ${Math.round(-flight.touchZ)} m past the threshold · ${Math.round(Math.abs(flight.touchVs) * 196.85)} ft/min`;
   $("score").textContent = crash ? "TRY AGAIN" : `${result.score} / 100`;
 }
 function updateFlight(dt) {
@@ -735,7 +757,18 @@ function updateFlight(dt) {
     const previous = worldPos(flight.x, flight.y, flight.z);
     stepFlight(flight, keys, dt);
     const wp = worldPos(flight.x, flight.y, flight.z);
-    const struck = !flight.ground && collisions.hit(previous, wp);
+    if (regionClearance(wp) < 0) {
+      result = { reason: "You left the London flying area. Start a new approach to fly again." };
+      flight.outOfRange = true;
+      report(true);
+      return;
+    }
+    if (flight.ground && !onAirportPavement(wp)) {
+      result = { reason: "You left the paved airport surface. Follow the yellow taxi lines at walking speed." };
+      report(true);
+      return;
+    }
+    const struck = collisions.hit(previous, wp);
     if (struck) {
       result = {
         reason:
@@ -802,13 +835,13 @@ function updateFlight(dt) {
       flight.touchVs = flight.vs;
       if (result.safe) {
         flight.ground = true;
+        flight.throttle = 0;
         flight.y = 4.5;
         flight.pitch = 0;
         flight.bank = 0;
       } else report(true);
     }
-    if (flight.ground && flight.speed < 2) report();
-    if (flight.ground && flight.z < -1508) report(true);
+    if (flight.ground && atGate(wp, flight.speed, -flight.heading*Math.PI/180+(approach === "09" ? Math.PI : 0))) report();
   }
   plane.position.copy(worldPos(flight.x, flight.y, flight.z));
   plane.rotation.order = "YXZ";
@@ -822,12 +855,12 @@ function updateFlight(dt) {
     0,
     -Math.cos((flight.heading * Math.PI) / 180),
   ).multiplyScalar(approach === "09" ? -1 : 1);
-  if (view === 0) {
+  if (view === 0 || view === 1) {
     camera.position.copy(plane.position).add(
       dir
         .clone()
         .multiplyScalar(-66)
-        .add(new T.Vector3(-dir.z * 14, 18, dir.x * 14)),
+        .add(new T.Vector3(-dir.z * (view === 1 ? 14 : 0), 18, dir.x * (view === 1 ? 14 : 0))),
     );
     camera.lookAt(
       plane.position
@@ -836,7 +869,7 @@ function updateFlight(dt) {
         .add(new T.Vector3(0, -2, 0)),
     );
     plane.visible = true;
-  } else if (view === 1) {
+  } else if (view === 2) {
     camera.position.copy(plane.position).add(
       dir
         .clone()
@@ -858,6 +891,7 @@ function updateFlight(dt) {
     camera.lookAt(plane.position);
     plane.visible = true;
   }
+  $("camera").textContent = ["CHASE · C", "OFFSET · C", "NOSE · C", "EXTERNAL · C"][view];
   $("speed").textContent = Math.round(flight.speed);
   $("alt").textContent = Math.max(0, Math.round((flight.y - 4.5) * 3.28084));
   $("vs").textContent = Math.round(flight.vs * 196.85);
@@ -881,7 +915,7 @@ function updateFlight(dt) {
   $("guide").textContent = paused
     ? "PAUSED · P TO RESUME"
     : flight.ground
-      ? "HOLD SPACE TO BRAKE"
+      ? flight.speed > 22 ? "BRAKE BELOW 20 KT · EXIT TO TAXIWAY" : "TAXI TO GATE 4 · W/S THRUST · ←/→ STEER"
       : customStart && (flight.z < 0 || Math.abs(flight.x) > 300 || Math.abs(bearingError) > 30)
         ? customCue
         : flight.y < 25
@@ -894,64 +928,24 @@ function updateFlight(dt) {
                 ? "TOO LOW · RAISE THE NOSE"
                 : "ON GLIDESLOPE";
   $("status").textContent = flight.ground
-    ? "TOUCHDOWN"
+    ? "TAXI · GATE 4"
     : flight.speed < 100
       ? "STALL · ADD THRUST"
       : "CLEARED TO LAND";
+  if (!flight.ground && regionClearance(plane.position) < 1200 && !flight.done)
+    $("guide").textContent = "EDGE OF FLYING AREA · TURN BACK";
+  if (flight.ground) $("distance").textContent = Math.round(Math.hypot(plane.position.x-GATE.x,plane.position.z-GATE.z))+" M TO GATE 4";
   $("deviation").textContent =
     err > 15 ? "○ ○ ○ ●" : err < -15 ? "● ● ● ○" : "● ● ○ ○";
 }
-const titles = [
-  "Above Canary Wharf.",
-  "Over the Greenwich Peninsula.",
-  "The famous 5.5° approach.",
-  "Welcome to London City.",
-];
 function cinematic(t) {
-  const segment = Math.floor(t / 10) % 4,
-    u = (t % 10) / 10;
-  plane.visible = true;
-  plane.rotation.set(0, Math.PI, 0);
-  if (segment === 0) {
-    plane.position.set(0, 340 - u * 80, -6500 + u * 1500);
-    camera.position.copy(plane.position).add(new T.Vector3(110, 35, -160));
-    camera.lookAt(plane.position.clone().add(new T.Vector3(-70, -65, 220)));
-  } else if (segment === 1) {
-    plane.visible = false;
-    const angle = 2.4 + u * 0.45;
-    camera.position.set(
-      o2.x + Math.cos(angle) * 510,
-      190 + u * 25,
-      o2.z + Math.sin(angle) * 510,
-    );
-    camera.lookAt(o2.x, 26, o2.z);
-  } else if (segment === 2) {
-    plane.position.set(0, Math.max(5, 70 - u * 66), -2220 + u * 680);
-    camera.position.copy(plane.position).add(new T.Vector3(-28, 9, -43));
-    camera.lookAt(plane.position.clone().add(new T.Vector3(0, 0, 50)));
-    plane.rotation.x = 0.04;
-  } else {
-    plane.position.set(0, 4.5, -1500 + u * 700);
-    camera.position.copy(plane.position).add(new T.Vector3(-28, 9, -40));
-    camera.lookAt(plane.position.clone().add(new T.Vector3(0, 0, 30)));
-  }
-  if (approach === "27" && segment !== 1) {
-    plane.position.z = -1508 - plane.position.z;
-    plane.position.x = -plane.position.x;
-    plane.rotation.y = 0;
-    const target = new T.Vector3();
-    camera.getWorldDirection(target);
-    const look = camera.position.clone().addScaledVector(target, 1000);
-    camera.position.z = -1508 - camera.position.z;
-    camera.position.x = -camera.position.x;
-    look.z = -1508 - look.z;
-    look.x = -look.x;
-    camera.lookAt(look);
-  }
-  $("shot-title").textContent =
-    approach === "27" && segment === 0
-      ? "Over the Royal Docks."
-      : titles[segment];
+  const pose=cinematicPose(t,cityModels.sites,approach);
+  plane.visible=true;
+  plane.position.copy(pose.position);
+  plane.rotation.order="YXZ";
+  plane.rotation.set(pose.pitch,pose.yaw,pose.bank);
+  camera.position.copy(pose.camera);camera.lookAt(pose.target);
+  $("shot-title").textContent=TOUR_TITLES[pose.segment];
 }
 function intro(t) {
   plane.visible = false;
@@ -1002,11 +996,18 @@ function render(now) {
     camera.position.set(-430, 125, -5680);
     updateShadows();
     captureCityReflections(renderer, scene, buildingMats, waters, plane, camera.position);
+    camera.position.set(430, 150, -10550);
+    shadowFocus.set(Infinity,0,Infinity);
+    updateShadows();
+    captureCityReflections(renderer, scene, cityModels.cityMaterials, waters, plane, camera.position);
     camera.position.copy(savedPosition);
     shadowFocus.set(Infinity, 0, Infinity);
     cityReflectionsReady = true;
   }
+  streetStats.update(paused ? 0 : dt);
+  cityModels.update(elapsed);
   updateShadows();
+  weather.update(camera);
   post.render();
   renderedFrames++;
   if (
@@ -1048,10 +1049,13 @@ window.sim = {
     demoTime = t;
     cinematic(t);
     updateShadows();
-    post.render();
+    weather.update(camera);
+  post.render();
   },
   renderAt(t) {
     manual = true;
+    streetStats.update(1/24);
+    cityModels.update(t);
     cinematic(t);
     ocean.time = t;
     ocean.update(0);
@@ -1062,18 +1066,22 @@ window.sim = {
         w.material.uniforms["uSlope" + i].value = ocean.slope[i];
     });
     updateShadows();
-    post.render();
+    weather.update(camera);
+  post.render();
   },
   renderer,
   architectureStats,
   o2Stats,
   streetStats,
+  landmarks: cityModels.sites,
+  get fogDensity() { return scene.fog.density; },
   vegetationCount,
   setShadows(enabled, normalBias = 0.65) {
     renderer.shadowMap.enabled = enabled;
     sunlight.shadow.normalBias = normalBias;
     renderer.shadowMap.needsUpdate = true;
-    post.render();
+    weather.update(camera);
+  post.render();
   },
   landmark: { position: [canadaX, 205, canadaZ], crownWidth },
   inspect(position, target) {
@@ -1082,7 +1090,8 @@ window.sim = {
     camera.position.fromArray(position);
     camera.lookAt(...target);
     updateShadows();
-    post.render();
+    weather.update(camera);
+  post.render();
   },
   get camera() {
     return {
@@ -1101,11 +1110,14 @@ window.sim = {
     manual = true;
   },
   advance(dt, k = {}) {
+    streetStats.update(dt);
+    cityModels.update(elapsed += dt);
     keys = k;
     updateFlight(dt);
     if (dt === 0) {
       updateShadows();
-      post.render();
+      weather.update(camera);
+  post.render();
     }
   },
 };

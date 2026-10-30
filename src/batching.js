@@ -13,7 +13,7 @@ export function mergeStaticMeshes(objects) {
         : object.geometry.clone()
     ).applyMatrix4(object.matrixWorld);
     for (const name of Object.keys(geometry.attributes))
-      if (!["position", "normal", "uv"].includes(name))
+      if (!["position", "normal", "uv"].includes(name) && !(name === "building" && object.material.userData.pbrFacade))
         geometry.deleteAttribute(name);
     if (!geometry.attributes.normal) geometry.computeVertexNormals();
     if (!geometry.attributes.uv)

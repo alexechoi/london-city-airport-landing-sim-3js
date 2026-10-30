@@ -58,3 +58,17 @@ Underground road sections are excluded using OSM `tunnel`, `location=underground
 ambientCG, CC0: https://docs.ambientcg.com/license/ . Authored PBR facade materials (not photographs): [Facade001](https://ambientcg.com/view?id=Facade001), [Facade005](https://ambientcg.com/view?id=Facade005), [Facade006](https://ambientcg.com/view?id=Facade006), [Facade018A](https://ambientcg.com/view?id=Facade018A), [Facade019A](https://ambientcg.com/view?id=Facade019A), and [Facade020A](https://ambientcg.com/view?id=Facade020A). Recessed window frames, blinds, brickwork and metal panels use aligned colour and OpenGL normal maps. AO, roughness and metalness are packed into RGB channels without colour-space conversion. `scripts/fetch-facades.py` reproduces the assets from the 1K JPG archives. Metric UVs vary bay and storey dimensions by building, with deterministic offsets and tint; landmark proportions retain dedicated materials. These are reusable facade families, not individual scans of every building.
 
 Curtain-wall reflections use a static 256-pixel cube probe above Canary Wharf, captured once after textures load. This approximates the district skyline in the glass without recapturing six scene views every frame. It is not a separate, position-correct reflection for each building. The HDR sky remains the diffuse environment; glass reflectance is calibrated separately from the source colour maps.
+
+## Airfield and London landmark revision
+
+The airfield uses Poly Haven CC0 `clean_asphalt`, `concrete_floor_02` and `leafy_grass`, with 1K diffuse, OpenGL normal and roughness maps. `scripts/fetch-airfield-textures.py` downloads the source files. Materials repeat in world metres; concrete joints, touchdown tyre wear and mowing variation are additional shader details. The same photographed ground surfaces contribute to city paving, roads and green spaces.
+
+New landmark models are reference-based approximations at geographic positions, replacing overlapping OSM building parts. Reference photographs were inspected and are not distributed:
+- [The Shard](https://commons.wikimedia.org/wiki/File:The_Shard_at_sunset_2017_(cropped).jpg): tapered faceted glass and split crown.
+- [Leadenhall and the Gherkin](https://commons.wikimedia.org/wiki/File:Cheesegrater_and_Gherkin.jpg): sloping mega-frame, rounded profile and spiral glazing.
+- [20 Fenchurch Street](https://commons.wikimedia.org/wiki/File:Walkie-Talkie_-_Sept_2015_(cropped).jpg) and [22 Bishopsgate](https://commons.wikimedia.org/wiki/File:22.Reza_05.jpg): widened upper floors and faceted stepped massing.
+- [London Eye](https://commons.wikimedia.org/wiki/File:London-Eye-2009.JPG): twin wheel rim, spokes, cantilever A-frame and 32 upright capsules.
+- [City Hall / the Crystal](https://commons.wikimedia.org/wiki/File:Siemens_Crystal_Building,_London.jpg): folded green-blue glazing.
+- [Newham Dockside offices](https://commons.wikimedia.org/wiki/File:Offices_on_the_Dockside_-_geograph.org.uk_-_4962612.jpg): four-storey glazing, stone piers and sunshades.
+
+Landmark dimensions and surrounding heights are approximate. One static City reflection probe supplements the Canary Wharf probe. Moving road vehicles follow connected OSM road segments; traffic signals and road priority are simplified. The flying area is bounded inside the shipped map, with cloud banks and rising haze near its edge.

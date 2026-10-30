@@ -89,6 +89,7 @@ export function buildUrbanGround(scene, data, parks = []) {
   mesh(pedestrians, surfaceMaterial("paving"));
   // Building plots ground the blocks, leaving gardens between streets.
   for (let i = 0; i < data.buildings.length; i++) {
+    if (data.buildings[i][4]) continue;
     const [h, p] = data.buildings[i];
     if (p.length < 4) continue;
     const shape = p.slice(0, -1).map((v) => new T.Vector2(...v));

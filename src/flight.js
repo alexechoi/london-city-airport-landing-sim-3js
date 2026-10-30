@@ -45,19 +45,24 @@ export function stepFlight(s, k, dt) {
     0,
     Math.min(1, s.throttle + ((k.w ? 1 : 0) - (k.s ? 1 : 0)) * dt * 0.24),
   );
+  if (s.ground) {
+    // Ailerons become nosewheel steering. Idle thrust coasts; W/S command taxi thrust.
+    s.bank = s.pitch = s.vs = 0;
+    const target = s.throttle * 22;
+    if (k[" "]) s.speed = Math.max(0, s.speed - dt * 14);
+    else s.speed = Math.max(0, s.speed + Math.max(-2.8, Math.min(2, (target - s.speed)*.7))*dt);
+    s.heading += ((k.ArrowRight ? 1 : 0) - (k.ArrowLeft ? 1 : 0)) * dt * 24 * Math.min(1,s.speed/8) * Math.min(1,22/Math.max(1,s.speed));
+    const a = s.heading * Math.PI / 180;
+    s.x += Math.sin(a) * s.speed * .5144 * dt;
+    s.z -= Math.cos(a) * s.speed * .5144 * dt;
+    return;
+  }
   const rollInput = (k.ArrowLeft ? 1 : 0) - (k.ArrowRight ? 1 : 0);
-  // Full aileron authority while held; gentle levelling only after release.
   if (rollInput) s.bank += rollInput * dt * 60;
   else s.bank *= Math.exp(-dt * 0.55);
   s.bank = Math.max(-75, Math.min(75, s.bank));
   s.pitch += ((k.ArrowDown ? 1 : 0) - (k.ArrowUp ? 1 : 0)) * dt * 4;
   s.pitch = Math.max(-18, Math.min(12, s.pitch));
-  if (s.ground) {
-    s.speed = Math.max(0, s.speed - dt * (k[" "] ? 14 : 2.8));
-    s.z -= s.speed * 0.5144 * dt;
-    if (s.z < -1508) s.done = true;
-    return;
-  }
   s.speed += (92 + s.throttle * 70 - s.speed) * dt * 0.15;
   // Coordinated turn rate: tighter turns at larger bank and lower airspeed.
   const airspeed = Math.max(70, s.speed) * 0.5144;
