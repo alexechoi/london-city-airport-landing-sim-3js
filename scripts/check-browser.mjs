@@ -11,13 +11,26 @@ const browser = await chromium.launch({
   ],
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+page.setDefaultTimeout(180000);
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 page.on("console", (m) => {
   if (m.type() === "error") errors.push(m.text());
 });
-await page.goto(process.env.SITE_URL || "http://localhost:5173");
-await page.waitForFunction(() => window.__ready, null, { timeout: 180000 });
+let unblock;
+const gate = new Promise((resolve) => (unblock = resolve));
+await page.route("**/london.json", async (route) => {
+  await gate;
+  await route.continue();
+});
+await page.goto(process.env.SITE_URL || "http://localhost:5173", {
+  waitUntil: "domcontentloaded",
+});
+assert.equal(await page.locator("#loading").isVisible(), true);
+await page.screenshot({ path: "work/screenshots/loading.png" });
+unblock();
+await page.waitForFunction(() => {if(window.__ready){sim.freeze();return true;}return false;}, null, { timeout: 180000 });
+await page.waitForFunction(() => document.getElementById("loading").hidden);
 await page.evaluate(() => sim.freeze());
 await page.screenshot({ path: "work/screenshots/03-title.png" });
 assert.equal(await page.locator("#runway-number").textContent(), "09");
@@ -63,4 +76,10 @@ assert.deepEqual(errors, []);
 console.log(
   "PASS: both approaches, touchdown, braking, crash, retry, demo, mobile; no browser errors.",
 );
+const failed = await browser.newPage();
+await failed.route("**/london.json", (r) => r.abort());
+await failed.goto(process.env.SITE_URL || "http://localhost:5173");
+await failed.waitForSelector("#loading[data-failed=true]");
+assert.equal(await failed.locator("#load-retry").isVisible(), true);
+console.log("PASS: loading screen gates scenery and shows retry on failure.");
 await browser.close();

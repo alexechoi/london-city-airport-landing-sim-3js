@@ -1,9 +1,11 @@
 import "./style.css";
+import { mergeStaticMeshes } from "./batching.js";
 import { Impact } from "./impact.js";
 import { collisionIndex } from "./collision.js";
 import { buildUrbanGround } from "./ground.js";
 import { architecturalDetails } from "./architecture.js";
 import { createCityMaterials, surfaceMaterial } from "./materials.js";
+import { addDistantCity } from "./distant-city.js";
 import { addVegetation } from "./vegetation.js";
 import { addCity } from "./city.js";
 window.setLoadingProgress(8, "Loading London map data");
@@ -49,7 +51,7 @@ renderer.toneMappingExposure = 0.9;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = T.PCFSoftShadowMap;
 const scene = new T.Scene();
-scene.fog = new T.FogExp2(0xd2dfe3, 0.00018);
+scene.fog = new T.FogExp2(0xe6edf0, 0.00016);
 const camera = new T.PerspectiveCamera(
   48,
   innerWidth / innerHeight,
@@ -101,12 +103,14 @@ const grass = mat(0x777b54),
   glass = mat(0x60818c, 0.23, 0.65),
   dark = mat(0x283b48, 0.45, 0.3),
   yellow = mat(0xcbb66d);
+const airportMeshes = [];
 function box(x, y, z, w, h, d, m, parent = scene) {
   const o = new T.Mesh(new T.BoxGeometry(w, h, d), m);
   o.position.set(x, y, z);
   o.castShadow = true;
   o.receiveShadow = true;
   parent.add(o);
+  if (parent === scene) airportMeshes.push(o);
   return o;
 }
 function line(points, color = 0xe1d7b3) {
@@ -369,6 +373,7 @@ function cylinder(r1, r2, h, m, x, y, z, parent = scene) {
   o.castShadow = true;
   o.receiveShadow = true;
   parent.add(o);
+  if (parent === scene) airportMeshes.push(o);
   return o;
 }
 // Digital control tower.
@@ -378,6 +383,14 @@ cylinder(13, 11, 2, white, -300, 49, -1840);
 box(-300, 56, -1840, 1, 13, 1, dark);
 // Unique per-building material seeds, metric window bays and footprint-relative shaders.
 const buildingMats = createCityMaterials();
+// Enrich only the original two-floor fallback; explicit OSM heights remain unchanged.
+for (let i = 0; i < mapData.buildings.length; i++) {
+  const b = mapData.buildings[i];
+  if (!b[3] || b[0] !== 6.2) continue;
+  if (b[2] === "apartments") b[0] = 15.5 + (i % 3) * 3.1;
+  else if (b[2] === "office") b[0] = 21.7;
+}
+
 // One Canada Square's surveyed height includes its crown. Build body and crown from one footprint.
 const canadaBuilding = mapData.buildings.find(
   ([h, p]) => h > 200 && Math.hypot(p[0][0] + 295, p[0][1] + 5928) < 100,
@@ -402,6 +415,7 @@ cityColliders.push(
 );
 const architectureStats = architecturalDetails(scene, mapData.buildings);
 buildUrbanGround(scene, mapData);
+const distantBuildingCount = addDistantCity(scene);
 const collisions = collisionIndex(cityColliders);
 const vegetationCount = await addVegetation(
   scene,
@@ -431,6 +445,19 @@ const pyramid = new T.Mesh(
 );
 pyramid.rotation.y = Math.PI / 4 - 0.049;
 pyramid.position.set(canadaX, 220, canadaZ);
+pyramid.material.envMapIntensity = 8;
+pyramid.material.onBeforeCompile = (s) => {
+  s.vertexShader = "varying float vCrownHeight;\n" + s.vertexShader;
+  s.vertexShader = s.vertexShader.replace(
+    "#include <begin_vertex>",
+    "#include <begin_vertex>\nvCrownHeight=position.y;",
+  );
+  s.fragmentShader = "varying float vCrownHeight;\n" + s.fragmentShader;
+  s.fragmentShader = s.fragmentShader.replace(
+    "#include <color_fragment>",
+    "#include <color_fragment>\nfloat stripe=abs(fract(vCrownHeight/1.5)-.5);float seam=1.-smoothstep(.02,.02+fwidth(vCrownHeight),stripe);diffuseColor.rgb*=1.-seam*.22;",
+  );
+};
 pyramid.castShadow = true;
 scene.add(pyramid);
 box(
@@ -473,7 +500,11 @@ for (let i = 0; i < 12; i++) {
 }
 window.setLoadingProgress(72, "Loading the Embraer 190 model");
 const aircraftAsset = await new GLTFLoader().loadAsync("/models/e190.glb");
-const aircraftTemplate = aircraftAsset.scene;
+const aircraftParts = [];
+aircraftAsset.scene.traverse((o) => {
+  if (o.isMesh) aircraftParts.push(o);
+});
+const aircraftTemplate = mergeStaticMeshes(aircraftParts);
 const assetBounds = new T.Box3().setFromObject(aircraftTemplate);
 aircraftTemplate.position.set(
   -(assetBounds.min.x + assetBounds.max.x) / 2,
@@ -505,6 +536,9 @@ for (let i = 0; i < 7; i++) {
   scene.add(a);
   box(-180, 2, -1220 - i * 68, 4, 4, 6, white);
 } // parked regional jets
+const airportBatch = mergeStaticMeshes(airportMeshes);
+airportMeshes.forEach((o) => scene.remove(o));
+scene.add(airportBatch);
 // Subtle volumetric-looking cloud banks.
 const cloudMat = new T.MeshBasicMaterial({
   color: 0xe6e1d5,
@@ -840,8 +874,8 @@ function cinematic(t) {
   plane.rotation.set(0, Math.PI, 0);
   if (segment === 0) {
     plane.position.set(0, 340 - u * 80, -6500 + u * 1500);
-    camera.position.copy(plane.position).add(new T.Vector3(-75, 30, -105));
-    camera.lookAt(plane.position.clone().add(new T.Vector3(0, -35, 65)));
+    camera.position.copy(plane.position).add(new T.Vector3(110, 35, -160));
+    camera.lookAt(plane.position.clone().add(new T.Vector3(-70, -65, 220)));
   } else if (segment === 1) {
     plane.position.set(0, 180 - u * 70, -3300 + u * 650);
     camera.position.set(-620 + u * 180, 350 - u * 55, -2650 + u * 350);
@@ -994,8 +1028,10 @@ window.sim = {
   advance(dt, k = {}) {
     keys = k;
     updateFlight(dt);
-    if (dt === 0) updateShadows();
-    renderer.render(scene, camera);
+    if (dt === 0) {
+      updateShadows();
+      renderer.render(scene, camera);
+    }
   },
 };
 if (new URLSearchParams(location.search).has("demo")) start("demo");

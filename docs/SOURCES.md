@@ -1,9 +1,9 @@
 # Sources, attribution and scope
 
 ## Geography
-© OpenStreetMap contributors, https://www.openstreetmap.org/copyright (ODbL 1.0). `public/london.json` is a derived database of 21,392 building footprints with available height/level tags and 9,726 road ways. `public/water.json` contains 271 water polygons. Downloaded through the Overpass API, 30 October 2026. Missing building heights use 2 floors; footprints are real, many heights are estimates. The Thames ribbon is hand approximated; docks use OSM polygons. These derived databases are distributed under ODbL, independently of the Apache-2.0 application code. Attribution is visible in the application footer.
+© OpenStreetMap contributors, https://www.openstreetmap.org/copyright (ODbL 1.0). `public/london.json` is a derived database of 21,392 building footprints with available height/level tags and 9,726 road ways. `public/water.json` contains 271 water polygons. Downloaded through the Overpass API, 30 October 2026. Missing building heights generally use 2 floors; apartments and offices with that fallback are estimated at 5–7 floors; footprints are real, many heights are estimates. The Thames ribbon is hand approximated; docks use OSM polygons. These derived databases are distributed under ODbL, independently of the Apache-2.0 application code. Attribution is visible in the application footer.
 
-The local frame places runway 27's threshold at approximately 51.50494 N, 0.06602 E, rotated 2.8° from east. The hand-modelled 1,508 × 30 m runway, apron, terminal and navigation lights are reference-based approximations. Visual surroundings are not surveyed scenery.
+The local frame places runway 27's threshold at approximately 51.50494 N, 0.06602 E, rotated 2.8° from east. The hand-modelled 1,508 × 30 m runway, apron, terminal and navigation lights are reference-based approximations. Visual surroundings are not surveyed scenery. Beyond the downloaded OSM area, low-detail procedural blocks provide an illustrative distant urban skyline; these are not mapped individual buildings.
 
 ## Visual reference
 - London City Airport's own aerial image: https://images.ctfassets.net/lmkdg513arga/Zad75iAnQxHw3FSbWi268/5b11d71922eeaf1f282436bfeff6b1b7/lcy-sky-view.png

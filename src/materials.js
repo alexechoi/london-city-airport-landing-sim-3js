@@ -19,6 +19,7 @@ export function createCityMaterials() {
     [0xb2b3ac, 0x293d49, false],
     [0x555a5c, 0x223239, true],
     [0xafb7bb, 0x52636c, true],
+    [0x969b98, 0x223239, false],
   ];
   return styles.map(([wall, glass, modern], idx) => {
     const mat = new T.MeshStandardMaterial({
@@ -49,6 +50,7 @@ export function createCityMaterials() {
       float modern=${modern ? "1." : "0."};
       float wx=mix(.23,.035,modern),wy=mix(.23,.20,modern);
       float opening=pulse(cell.x,wx,1.-wx,fw.x)*pulse(cell.y,wy,.93,fw.y);
+      ${idx === 7 ? `opening*=smoothstep(vBuilding.w-3.5,vBuilding.w-2.8,vMetric.y);` : ""}
       float reveal=pulse(cell.x,wx-.025,1.-wx+.025,fw.x)*pulse(cell.y,wy-.025,.95,fw.y);
       float frame=pulse(cell.x,.488,.512,fw.x)*opening;
       float row=vMetric.y/.075;
@@ -59,6 +61,7 @@ export function createCityMaterials() {
       float courses=band(vMetric.y,3.2*4.,.10);
       masonry=mix(masonry,vec3(.43,.42,.38),courses*.28);
       vec3 wallBase=mix(masonry,wallTint*tone,modern);
+      ${idx === 7 ? `wallBase=wallTint*tone*(1.-band(vMetric.x,.3,.035)*.18);reveal=opening;` : ""}
       vec3 viewDir=normalize(cameraPosition-vCityPosition);
       vec3 n=normalize(vCityNormal);
       vec3 refl=reflect(-viewDir,n);
@@ -106,16 +109,20 @@ export function surfaceMaterial(kind = "paving", landcover = null) {
   m.onBeforeCompile = (s) => {
     s.vertexShader =
       (kind === "road" ? "attribute vec3 roadUV;varying vec3 vRoadUV;" : "") +
+      (kind === "roof"
+        ? "attribute vec4 building;varying float vRoofSeed;"
+        : "") +
       "varying vec3 vGround;\n" +
       s.vertexShader;
     s.vertexShader = s.vertexShader.replace(
       "#include <begin_vertex>",
       "#include <begin_vertex>\nvGround=(modelMatrix*vec4(position,1.)).xyz;" +
-        (kind === "road" ? "vRoadUV=roadUV;" : ""),
+        (kind === "road" ? "vRoadUV=roadUV;" : "") +
+        (kind === "roof" ? "vRoofSeed=building.x;" : ""),
     );
     if (landcover) s.uniforms.landcover = { value: landcover };
     s.fragmentShader =
-      `${kind === "road" ? "varying vec3 vRoadUV;" : ""}${landcover ? "uniform sampler2D landcover;" : ""}varying vec3 vGround;\n${common}\n` +
+      `${kind === "roof" ? "varying float vRoofSeed;" : ""}${kind === "road" ? "varying vec3 vRoadUV;" : ""}${landcover ? "uniform sampler2D landcover;" : ""}varying vec3 vGround;\n${common}\n` +
       s.fragmentShader;
     const road = kind === "road",
       roof = kind === "roof",
@@ -127,7 +134,7 @@ export function surfaceMaterial(kind = "paving", landcover = null) {
     vec2 p=vGround.xz;float footprint=length(fwidth(p));
     float broad=noiseCity(p*.075),medium=noiseCity(p*.75),fine=mix(.5,noiseCity(p*18.),1.-smoothstep(.03,.12,footprint));
     float damp=smoothstep(.58,.83,noiseCity(p*.21));
-    vec3 base=${road ? "mix(vec3(.055,.064,.073),vec3(.105,.113,.12),medium*.4+broad*.4+fine*.2)" : roof ? "mix(vec3(.13,.145,.15),vec3(.23,.24,.23),broad)" : terrain ? "mix(vec3(.21,.23,.20),vec3(.29,.30,.27),broad)" : "mix(vec3(.31,.30,.275),vec3(.43,.42,.39),broad*.5+medium*.5)"};
+    vec3 base=${road ? "mix(vec3(.055,.064,.073),vec3(.105,.113,.12),medium*.4+broad*.4+fine*.2)" : roof ? "mix(vec3(.15,.16,.17),vec3(.18,.19,.20),broad)" : terrain ? "mix(vec3(.21,.23,.20),vec3(.29,.30,.27),broad)" : "mix(vec3(.29,.285,.27),vec3(.34,.33,.31),broad*.5+medium*.5)"};
     float seam=max(band(p.x,${roof ? "4." : ".9"},.012),band(p.y,${roof ? "4." : ".6"},.012));
     ${road ? `float repairMask=pulse(fract(p.x/9.),.15,.8,fwidth(p.x/9.))*pulse(fract(p.y/11.),.2,.7,fwidth(p.y/11.))*step(.7,hashCity(floor(p/vec2(9.,11.))));base*=1.-repairMask*.25;` : terrain ? "" : `base*=1.-seam*.28;`}
     ${
@@ -141,6 +148,7 @@ export function surfaceMaterial(kind = "paving", landcover = null) {
     base=mix(base*.65,garden,vegetation);`
         : ""
     }
+${roof ? `base*=.78+hashCity(vec2(vRoofSeed,17.))*.44;` : ""}
     base*=mix(.93,1.06,fine)*(1.-damp*.14);
     ${road ? `float lineWidth=max(fwidth(vRoadUV.y),.001);float centre=clamp((.11-abs(vRoadUV.y))/lineWidth+.5,0.,1.)*min(1.,.11/lineWidth);float dash=pulse(fract(vRoadUV.x/9.),0.,.33,fwidth(vRoadUV.x/9.));base=mix(base,vec3(.62,.60,.52),centre*dash*vRoadUV.z*.75);` : ""}
     diffuseColor.rgb*=base;

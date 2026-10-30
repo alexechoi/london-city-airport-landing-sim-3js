@@ -19,13 +19,15 @@ export function addCity(scene, data, materials, roofMaterial) {
     const h = Math.min(310, height),
       b =
         batches[
-          height > 45
-            ? index === 10
-              ? 6
-              : [0, 5, 0, 6][index % 4]
-            : /house|terrace/.test(type)
-              ? 2 + (index % 2)
-              : 1 + (index % 4)
+          /industrial|warehouse|service|shed|garage|hangar/.test(type)
+            ? 7
+            : height > 45
+              ? index === 10
+                ? 6
+                : [0, 5, 0, 6][index % 4]
+              : /house|terrace/.test(type)
+                ? 2 + (index % 2)
+                : 1 + (index % 4)
         ];
     const rnd = ((index * 2654435761) >>> 0) / 4294967296;
     parameters = [

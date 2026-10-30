@@ -1,10 +1,12 @@
 import { chromium } from "playwright";
-import { mkdir } from "node:fs/promises";
+import { mkdir, copyFile, rm } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
-const duration = 24,
+const duration = 18,
   fps = 24,
   frames = duration * fps;
+await rm("work/frames", { recursive: true, force: true });
 await mkdir("work/frames", { recursive: true });
+await mkdir("public/screenshots", { recursive: true });
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || "/usr/bin/chromium",
   args: [
@@ -17,16 +19,31 @@ const page = await browser.newPage({
   viewport: { width: 1280, height: 720 },
   deviceScaleFactor: 1,
 });
-page.on("pageerror", (e) => console.log("ERROR", e.message));
+const errors = [];
+page.on("pageerror", (e) => errors.push(e.message));
+page.on("console", (m) => {
+  if (m.type() === "error") errors.push(m.text());
+});
 await page.goto((process.env.SITE_URL || "http://localhost:5173") + "/?demo");
-await page.waitForFunction(() => window.__ready, null, { timeout: 180000 });
+await page.waitForFunction(() => {if(window.__ready){sim.freeze();return true;}return false;}, null, { timeout: 180000 });
 await page.waitForLoadState("networkidle");
 await page.evaluate(async () => {
   await document.fonts.ready;
   sim.freeze();
 });
+await page.evaluate(() => {
+  const [x, y, z] = sim.landmark.position;
+  sim.inspect([x - 290, y + 50, z - 240], [x, 150, z]);
+  document.getElementById("caption").hidden = true;
+});
+await page.screenshot({ path: "public/screenshots/one-canada-square.png" });
+await page.evaluate(() => sim.start("demo"));
+if (errors.length) throw new Error(errors.join("\n"));
 for (let i = 0; i < frames; i++) {
-  await page.evaluate((t) => sim.renderAt(t), (i / frames) * 39.95);
+  await page.evaluate(
+    (t) => sim.renderAt(t),
+    [0, 20, 30][Math.min(2, Math.floor(i / (fps * 6)))] + (i % (fps * 6)) / fps,
+  );
   await page.screenshot({
     path: `work/frames/${String(i).padStart(5, "0")}.jpg`,
     type: "jpeg",
@@ -35,7 +52,20 @@ for (let i = 0; i < frames; i++) {
   });
   if (i % 24 === 0) console.log(`${i}/${frames}`);
 }
+console.log(
+  "Capture geometry",
+  await page.evaluate(() => ({
+    triangles: sim.renderer.info.render.triangles,
+    calls: sim.renderer.info.render.calls,
+    vegetation: sim.vegetationCount,
+    architecture: sim.architectureStats,
+  })),
+);
 await browser.close();
+if (errors.length) throw new Error(errors.join("\n"));
+await copyFile("work/frames/00024.jpg", "public/screenshots/skyline.jpg");
+await copyFile("work/frames/00168.jpg", "public/screenshots/approach.jpg");
+await copyFile("work/frames/00312.jpg", "public/screenshots/touchdown.jpg");
 const r = spawnSync(
   "ffmpeg",
   [
@@ -49,7 +79,7 @@ const r = spawnSync(
     "-i",
     "sine=frequency=65:sample_rate=44100",
     "-filter:a",
-    "volume=0.035,afade=t=in:d=1,afade=t=out:st=22:d=2",
+    "volume=0.035,afade=t=in:d=1,afade=t=out:st=16:d=2",
     "-c:v",
     "libx264",
     "-crf",
@@ -68,3 +98,5 @@ const r = spawnSync(
   { stdio: "inherit" },
 );
 process.exitCode = r.status;
+if (r.status === 0)
+  await copyFile("work/london-city-flythrough.mp4", "public/flythrough.mp4");

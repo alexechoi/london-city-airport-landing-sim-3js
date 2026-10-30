@@ -35,7 +35,7 @@ Wings must be level, touchdown must be inside the runway, sink rate below 4 m/s 
 
 ## Cinematic and capture
 
-Watch flythrough, or add `?demo`. Four looping 10-second shots: Canary Wharf, dockside aerial, steep final, and touchdown. H hides titles, P pauses, Escape exits. The deterministic capture script creates JPEG frames and an H.264 MP4 with ffmpeg:
+Watch flythrough, or add `?demo`. Four looping 10-second shots: Canary Wharf, dockside aerial, steep final, and touchdown. H hides titles, P pauses, Escape exits. The capture script records three six-second shots (skyline, final and touchdown) as JPEG frames and an H.264 MP4 with ffmpeg:
 
 ```sh
 npm run dev
@@ -54,11 +54,13 @@ Netlify uses `netlify.toml`: `npm run build`, publish `dist`. No server, paid ma
 
 ## Demo media
 
-- [Original first-build flythrough (before the rendering and aircraft revision)](https://city-landing.alexchoi.xyz/flythrough.mp4)
+- [Revised 18-second flythrough](https://city-landing.alexchoi.xyz/flythrough.mp4)
 - [Live production screenshot](https://city-landing.alexchoi.xyz/screenshots/title.png)
 - [Final approach screenshot](https://city-landing.alexchoi.xyz/screenshots/approach.jpg)
 
-The video is rendered from the actual Three.js scene at 1280×720, 24 fps, H.264/AAC.
+The revised video is rendered from the actual Three.js scene at 1280×720, 24 fps, H.264/AAC.
+
+[One Canada Square close-up](https://city-landing.alexchoi.xyz/screenshots/one-canada-square.png) · [Revised skyline](https://city-landing.alexchoi.xyz/screenshots/skyline.jpg)
 
 ## Rendering and control fixes
 
