@@ -301,9 +301,10 @@ renderer.shadowMap.needsUpdate = true;
 box(0, 0, -754, 170, 2, 1610, grass);
 box(0, 1.04, -754, 30, 0.14, 1508, asphalt);
 box(-63, 0.98, -754, 30, 0.2, 1508, asphalt);
-for (const z of [-150,-600,-1250]) box(-31.5, 1, z, 63, .16, 30, asphalt);
-box(-129, 0, -1400, 175, 2, 760, concrete);
-box(-167, 0, -825, 60, 2, 420, concrete);
+for (const z of [-150,-600,-1250]) box(-31.5, 1.005, z, 63, .16, 30, asphalt);
+// Keep the apron above the grass island: coincident top faces flickered at grazing views.
+box(-129, 0.035, -1400, 175, 2, 760, concrete);
+box(-167, 0.035, -825, 60, 2, 420, concrete);
 for (const x of [-87, 87]) box(x, -0.1, -754, 3, 3, 1608, concrete);
 for (const x of [-395, 415]) box(x, -0.4, -754, 5, 4, 2600, concrete);
 for (let z = -20; z > -1508; z -= 30) {

@@ -25,8 +25,8 @@ export function airfieldMaterial(kind) {
       vec2 p=vAirfield.xz;
       ${kind === "concrete" ? "diffuseColor.rgb*=2.2;" : ""}
       ${kind === "concrete" ? `vec2 q=abs(fract(p/6.+.5)-.5)*6.;vec2 fw=max(fwidth(p),vec2(.001));float seam=max(1.-smoothstep(.014,.014+fw.x,q.x),1.-smoothstep(.014,.014+fw.y,q.y));diffuseColor.rgb*=1.-seam*.18;` : ""}
-      ${kind === "asphalt" ? `float centre=exp(-pow(p.x/5.,2.));float touch=max(exp(-pow((p.y+320.)/185.,2.)),exp(-pow((p.y+1188.)/185.,2.)));float tyre=.55+.45*sin(p.x*8.);diffuseColor.rgb*=1.-centre*touch*tyre*.42;` : ""}
-      ${kind === "grass" ? `float lum=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));float mow=sin(p.y*.11)*.5+.5;diffuseColor.rgb=vec3(.10,.155,.043)*(.65+lum*1.8)*(.92+.08*mow);` : ""}
+      ${kind === "asphalt" ? `float centre=exp(-pow(p.x/5.,2.));float touch=max(exp(-pow((p.y+320.)/185.,2.)),exp(-pow((p.y+1188.)/185.,2.)));float tyre=.55+.45*sin(p.x*8.)*(1.-smoothstep(.8,3.14,fwidth(p.x*8.)));diffuseColor.rgb*=1.-centre*touch*tyre*.42;` : ""}
+      ${kind === "grass" ? `float lum=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));float mow=sin(p.y*.11)*.5*(1.-smoothstep(.8,3.14,fwidth(p.y*.11)))+.5;diffuseColor.rgb=vec3(.10,.155,.043)*(.65+lum*1.8)*(.92+.08*mow);` : ""}
     `);
   };
   return m;
