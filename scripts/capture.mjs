@@ -1,7 +1,7 @@
 import { chromium } from "playwright";
 import { mkdir, copyFile, rm } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
-const duration = 18,
+const duration = 20,
   fps = 24,
   frames = duration * fps;
 await rm("work/frames", { recursive: true, force: true });
@@ -25,7 +25,17 @@ page.on("console", (m) => {
   if (m.type() === "error") errors.push(m.text());
 });
 await page.goto((process.env.SITE_URL || "http://localhost:5173") + "/?demo");
-await page.waitForFunction(() => {if(window.__ready){sim.freeze();return true;}return false;}, null, { timeout: 180000 });
+await page.waitForFunction(
+  () => {
+    if (window.__ready) {
+      sim.freeze();
+      return true;
+    }
+    return false;
+  },
+  null,
+  { timeout: 180000 },
+);
 await page.waitForLoadState("networkidle");
 await page.evaluate(async () => {
   await document.fonts.ready;
@@ -42,7 +52,8 @@ if (errors.length) throw new Error(errors.join("\n"));
 for (let i = 0; i < frames; i++) {
   await page.evaluate(
     (t) => sim.renderAt(t),
-    [0, 20, 30][Math.min(2, Math.floor(i / (fps * 6)))] + (i % (fps * 6)) / fps,
+    [0, 10, 25, 30][Math.min(3, Math.floor(i / (fps * 5)))] +
+      (i % (fps * 5)) / fps,
   );
   await page.screenshot({
     path: `work/frames/${String(i).padStart(5, "0")}.jpg`,
@@ -50,7 +61,7 @@ for (let i = 0; i < frames; i++) {
     quality: 92,
     timeout: 180000,
   });
-  if (i % 24 === 0) console.log(`${i}/${frames}`);
+  if (i % 24 === 0) console.log(`${i}/${frames} @ ${new Date().toISOString()}`);
 }
 console.log(
   "Capture geometry",
@@ -64,8 +75,9 @@ console.log(
 await browser.close();
 if (errors.length) throw new Error(errors.join("\n"));
 await copyFile("work/frames/00024.jpg", "public/screenshots/skyline.jpg");
-await copyFile("work/frames/00168.jpg", "public/screenshots/approach.jpg");
-await copyFile("work/frames/00312.jpg", "public/screenshots/touchdown.jpg");
+await copyFile("work/frames/00144.jpg", "public/screenshots/o2.jpg");
+await copyFile("work/frames/00264.jpg", "public/screenshots/approach.jpg");
+await copyFile("work/frames/00384.jpg", "public/screenshots/touchdown.jpg");
 const r = spawnSync(
   "ffmpeg",
   [
@@ -79,7 +91,7 @@ const r = spawnSync(
     "-i",
     "sine=frequency=65:sample_rate=44100",
     "-filter:a",
-    "volume=0.035,afade=t=in:d=1,afade=t=out:st=16:d=2",
+    "volume=0.035,afade=t=in:d=1,afade=t=out:st=18:d=2",
     "-c:v",
     "libx264",
     "-crf",

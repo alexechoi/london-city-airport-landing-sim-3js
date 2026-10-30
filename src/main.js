@@ -1,4 +1,6 @@
 import "./style.css";
+import { addDaylightSky } from "./daylight.js";
+import { createPost } from "./post.js";
 import { addStreetDetails } from "./street-details.js";
 import { buildO2 } from "./o2.js";
 import { addLandmarkDetails } from "./landmarks.js";
@@ -10,7 +12,7 @@ import { architecturalDetails } from "./architecture.js";
 import { createCityMaterials, surfaceMaterial } from "./materials.js";
 import { addContextCity } from "./context-city.js";
 import { addVegetation } from "./vegetation.js";
-import { addCity } from "./city.js";
+import { addCityCells } from "./city.js";
 window.setLoadingProgress(8, "Loading London map data");
 const [mapData, waterData, contextData, parkData] = await Promise.all([
   fetch("/london.json").then((r) => r.json()),
@@ -23,6 +25,7 @@ await new Promise((resolve) =>
   requestAnimationFrame(() => requestAnimationFrame(resolve)),
 );
 import * as T from "three";
+let sceneryConstructed = false;
 let texturesReady = false,
   renderedFrames = 0;
 T.DefaultLoadingManager.onStart = () => {
@@ -30,15 +33,22 @@ T.DefaultLoadingManager.onStart = () => {
 };
 T.DefaultLoadingManager.onProgress = (url, loaded, total) =>
   window.setLoadingProgress(
-    Math.min(94, 70 + Math.round((loaded / total) * 24)),
-    "Loading surface textures",
+    url.endsWith(".hdr")
+      ? 45
+      : Math.min(
+          sceneryConstructed ? 94 : 65,
+          (sceneryConstructed ? 70 : 45) + Math.round((loaded / total) * 20),
+        ),
+    url.endsWith(".hdr")
+      ? "Loading daylight environment"
+      : "Loading surface textures",
   );
 T.DefaultLoadingManager.onLoad = () => {
   texturesReady = true;
 };
 T.DefaultLoadingManager.onError = () => window.loadingFailed();
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { Sky } from "three/addons/objects/Sky.js";
+import { HDRLoader } from "three/addons/loaders/HDRLoader.js";
 import { Water } from "./vendor/three-water/Water.js";
 import {
   OceanSim,
@@ -73,23 +83,17 @@ const camera = new T.PerspectiveCamera(
   0.5,
   26000,
 );
-const sun = new T.Vector3(-0.55, 0.48, -0.65).normalize();
-const sky = new Sky();
-sky.scale.setScalar(40000);
-sky.material.fragmentShader = sky.material.fragmentShader.replace(
-  "gl_FragColor = vec4( texColor, 1.0 );",
-  "gl_FragColor = vec4( texColor * .22, 1.0 );",
-);
-scene.add(sky);
-Object.assign(sky.material.uniforms.turbidity, { value: 5 });
-sky.material.uniforms.rayleigh.value = 2.4;
-sky.material.uniforms.cloudCoverage.value = 0.48;
-sky.material.uniforms.cloudDensity.value = 0.6;
-sky.material.uniforms.cloudElevation.value = 0.7;
-sky.material.uniforms.mieCoefficient.value = 0.006;
-sky.material.uniforms.sunPosition.value.copy(sun);
-scene.add(new T.HemisphereLight(0xbcd4ee, 0x7d7568, 1.45));
-const sunlight = new T.DirectionalLight(0xffdbad, 4.1);
+const post = createPost(renderer, scene, camera);
+const sun = new T.Vector3(-0.431, 0.743, -0.509).normalize();
+window.setLoadingProgress(33, "Loading daylight environment");
+const daylight = await new HDRLoader().loadAsync("/textures/daylight-sky.hdr");
+daylight.mapping = T.EquirectangularReflectionMapping;
+addDaylightSky(scene, daylight, supportsReverseDepth, 2.868);
+scene.environmentRotation.y = 2.868;
+scene.environment = daylight;
+scene.environmentIntensity = 0.18;
+scene.add(new T.HemisphereLight(0xbcd4ee, 0x7d7568, 0.75));
+const sunlight = new T.DirectionalLight(0xfff0d9, 3.8);
 sunlight.position.copy(sun).multiplyScalar(4000);
 sunlight.castShadow = true;
 sunlight.shadow.mapSize.set(2048, 2048);
@@ -106,12 +110,6 @@ sunlight.shadow.normalBias = 0.65;
 sunlight.target.position.set(0, 0, -750);
 scene.add(sunlight.target);
 scene.add(sunlight);
-const environmentScene = new T.Scene();
-environmentScene.add(sky.clone());
-const pmrem = new T.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(environmentScene, 0.04).texture;
-scene.environmentIntensity = 0.07;
-pmrem.dispose();
 let seed = 41;
 function rand() {
   seed = (seed * 1664525 + 1013904223) >>> 0;
@@ -398,7 +396,7 @@ const o2Services = mapData.buildings.filter((b, i) => {
   return false;
 });
 const cityRoof = surfaceMaterial("roof");
-const cityColliders = addCity(scene, mapData, buildingMats, cityRoof);
+const cityColliders = addCityCells(scene, mapData, buildingMats, cityRoof);
 cityColliders.push(
   { minX: -288, maxX: -218, minZ: -1735, maxZ: -1165, h: 21 },
   { minX: -313, maxX: -287, minZ: -1853, maxZ: -1827, h: 57 },
@@ -421,6 +419,18 @@ cityColliders.push({
   maxZ: o2Collision.z + 180,
   h: 52,
 });
+for (let i = 0; i < 12; i++) {
+  const a = (i * Math.PI) / 6 + Math.PI / 12,
+    cs = Math.cos(a),
+    sn = Math.sin(a);
+  cityColliders.push({
+    minX: o2Collision.x + Math.min(cs * 99, cs * 117) - 2,
+    maxX: o2Collision.x + Math.max(cs * 99, cs * 117) + 2,
+    minZ: o2Collision.z + Math.min(sn * 99, sn * 117) - 2,
+    maxZ: o2Collision.z + Math.max(sn * 99, sn * 117) + 2,
+    h: 104,
+  });
+}
 const collisions = collisionIndex(cityColliders);
 const vegetationCount = await addVegetation(
   scene,
@@ -446,7 +456,7 @@ const pyramid = new T.Mesh(
 );
 pyramid.rotation.y = Math.PI / 4 - 0.125;
 pyramid.position.set(canadaX, 220, canadaZ);
-pyramid.material.envMapIntensity = 8;
+pyramid.material.envMapIntensity = 1.8;
 pyramid.material.onBeforeCompile = (s) => {
   s.vertexShader = "varying float vCrownHeight;\n" + s.vertexShader;
   s.vertexShader = s.vertexShader.replace(
@@ -480,6 +490,7 @@ cityColliders.push({
 });
 const o2 = geo(0.0032, 51.503);
 const o2Stats = buildO2(scene, o2, o2Services);
+sceneryConstructed = true;
 window.setLoadingProgress(72, "Loading the Embraer 190 model");
 const aircraftAsset = await new GLTFLoader().loadAsync("/models/e190.glb");
 const aircraftParts = [];
@@ -829,7 +840,7 @@ function updateFlight(dt) {
 }
 const titles = [
   "Above Canary Wharf.",
-  "London. A different perspective.",
+  "Over the Greenwich Peninsula.",
   "The famous 5.5° approach.",
   "Welcome to London City.",
 ];
@@ -843,9 +854,14 @@ function cinematic(t) {
     camera.position.copy(plane.position).add(new T.Vector3(110, 35, -160));
     camera.lookAt(plane.position.clone().add(new T.Vector3(-70, -65, 220)));
   } else if (segment === 1) {
-    plane.position.set(0, 180 - u * 70, -3300 + u * 650);
-    camera.position.set(-620 + u * 180, 350 - u * 55, -2650 + u * 350);
-    camera.lookAt(0, 0, -700);
+    plane.visible = false;
+    const angle = 2.4 + u * 0.45;
+    camera.position.set(
+      o2.x + Math.cos(angle) * 510,
+      190 + u * 25,
+      o2.z + Math.sin(angle) * 510,
+    );
+    camera.lookAt(o2.x, 26, o2.z);
   } else if (segment === 2) {
     plane.position.set(0, Math.max(5, 70 - u * 66), -2220 + u * 680);
     camera.position.copy(plane.position).add(new T.Vector3(-28, 9, -43));
@@ -856,7 +872,7 @@ function cinematic(t) {
     camera.position.copy(plane.position).add(new T.Vector3(-28, 9, -40));
     camera.lookAt(plane.position.clone().add(new T.Vector3(0, 0, 30)));
   }
-  if (approach === "27") {
+  if (approach === "27" && segment !== 1) {
     plane.position.z = -1508 - plane.position.z;
     plane.position.x = -plane.position.x;
     plane.rotation.y = 0;
@@ -917,7 +933,7 @@ function render(now) {
     );
   }
   updateShadows();
-  renderer.render(scene, camera);
+  post.render();
   renderedFrames++;
   if (
     texturesReady &&
@@ -938,6 +954,7 @@ addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+  post.resize(innerWidth, innerHeight);
 });
 window.sim = {
   start,
@@ -954,14 +971,21 @@ window.sim = {
     demoTime = t;
     cinematic(t);
     updateShadows();
-    renderer.render(scene, camera);
+    post.render();
   },
   renderAt(t) {
     manual = true;
     cinematic(t);
-    waters.forEach((w) => (w.material.uniforms.time.value = t * 0.32));
+    ocean.time = t;
+    ocean.update(0);
+    renderer.setRenderTarget(null);
+    waters.forEach((w) => {
+      w.material.uniforms.time.value = t * 0.32;
+      for (let i = 0; i < 3; i++)
+        w.material.uniforms["uSlope" + i].value = ocean.slope[i];
+    });
     updateShadows();
-    renderer.render(scene, camera);
+    post.render();
   },
   renderer,
   architectureStats,
@@ -972,7 +996,7 @@ window.sim = {
     renderer.shadowMap.enabled = enabled;
     sunlight.shadow.normalBias = normalBias;
     renderer.shadowMap.needsUpdate = true;
-    renderer.render(scene, camera);
+    post.render();
   },
   landmark: { position: [canadaX, 205, canadaZ], crownWidth },
   inspect(position, target) {
@@ -981,7 +1005,7 @@ window.sim = {
     camera.position.fromArray(position);
     camera.lookAt(...target);
     updateShadows();
-    renderer.render(scene, camera);
+    post.render();
   },
   get camera() {
     return {
@@ -1004,7 +1028,7 @@ window.sim = {
     updateFlight(dt);
     if (dt === 0) {
       updateShadows();
-      renderer.render(scene, camera);
+      post.render();
     }
   },
 };

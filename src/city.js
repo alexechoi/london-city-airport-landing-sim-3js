@@ -15,9 +15,11 @@ export function addCity(scene, data, materials, roofMaterial, seedOffset = 0) {
       b.b.push(...parameters);
     }
   }
-  for (let index = 0; index < data.buildings.length; index++) {
-    const [height, poly, type] = data.buildings[index];
-    if (poly.length < 4 || data.buildings[index][4] === "o2-service") continue;
+  for (let localIndex = 0; localIndex < data.buildings.length; localIndex++) {
+    const index = data.indices?.[localIndex] ?? localIndex;
+    const [height, poly, type] = data.buildings[localIndex];
+    if (poly.length < 4 || data.buildings[localIndex][4] === "o2-service")
+      continue;
     const h = Math.min(310, height),
       b =
         batches[
@@ -57,6 +59,12 @@ export function addCity(scene, data, materials, roofMaterial, seedOffset = 0) {
       height,
     ];
     const points = poly.slice(0, -1);
+    // Normalize winding so exterior walls can use back-face culling.
+    const signedArea = points.reduce((sum, p, i) => {
+      const q = points[(i + 1) % points.length];
+      return sum + p[0] * q[1] - q[0] * p[1];
+    }, 0);
+    if (signedArea > 0) points.reverse();
     const residential = /house|terrace/.test(type) && h < 16;
     let roofRise = 0,
       roofFrame = null;
@@ -198,5 +206,24 @@ export function addCity(scene, data, materials, roofMaterial, seedOffset = 0) {
   }
   batches.forEach((b, i) => mesh(b, uniqueMaterials[i]));
   mesh(roofs, roofMaterial);
+  return colliders;
+}
+
+// Core scenery retains source IDs for landmark materials but culls in geographic cells.
+export function addCityCells(scene, data, materials, roofMaterial) {
+  const cells = new Map();
+  data.buildings.forEach((b, index) => {
+    const p = b[1],
+      x = p.reduce((s, v) => s + v[0], 0) / p.length,
+      z = p.reduce((s, v) => s + v[1], 0) / p.length;
+    const key = `${Math.floor(x / 900)},${Math.floor(z / 900)}`;
+    if (!cells.has(key)) cells.set(key, { buildings: [], indices: [] });
+    const cell = cells.get(key);
+    cell.buildings.push(b);
+    cell.indices.push(index);
+  });
+  const colliders = [];
+  for (const data of cells.values())
+    colliders.push(...addCity(scene, data, materials, roofMaterial));
   return colliders;
 }

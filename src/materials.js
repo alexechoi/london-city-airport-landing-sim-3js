@@ -39,8 +39,8 @@ export function createCityMaterials() {
     const mat = new T.MeshStandardMaterial({
       roughness: 0.7,
       metalness: 0.08,
-      side: T.DoubleSide,
-      envMapIntensity: modern ? 8 : 1,
+      side: T.FrontSide,
+      envMapIntensity: modern ? 1.5 : 1,
     });
     const photoName =
       idx === 2
@@ -142,7 +142,10 @@ export function createCityMaterials() {
   });
 }
 export function surfaceMaterial(kind = "paving", landcover = null) {
-  const m = new T.MeshStandardMaterial({ roughness: 0.9, side: T.DoubleSide });
+  const m = new T.MeshStandardMaterial({
+    roughness: 0.9,
+    side: kind === "roof" ? T.FrontSide : T.DoubleSide,
+  });
   m.customProgramCacheKey = () => `london-ground-${kind}`;
   const floorPhoto =
     kind === "park"

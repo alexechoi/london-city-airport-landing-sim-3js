@@ -15,7 +15,7 @@ The local frame places runway 27's threshold at approximately 51.50494 N, 0.0660
 
 ## Water
 Ultra-Water: https://github.com/Humpalumps/Ultra-Water, MIT license included in `src/vendor/ultra-water/LICENSE`. Uses its Tessendorf/JONSWAP FFT simulation with a 64² grid, 4 cascades and 15 Hz updates. Three slope cascades feed Three.js Water's planar reflection surface. This is an adapted dock-water renderer, not Ultra-Water's full ocean/underwater pipeline.
-Three.js Water and Sky: MIT licensed as part of Three.js. `src/vendor/three-water/Water.js` adapts the reflection clip plane for reversed depth; its MIT license is retained alongside it.
+Three.js Water: MIT licensed as part of Three.js. `src/vendor/three-water/Water.js` adapts the reflection clip plane for reversed depth; its MIT license is retained alongside it.
 
 ## Surface photography
 Poly Haven, CC0: https://polyhaven.com/license
@@ -44,3 +44,7 @@ Landmark signs and the Newfoundland structural lattice are modelled approximatio
 ### Millennium Dome / The O2 architectural reference
 
 The hand-built model in `src/o2.js` uses the documented 365 m diameter, 52 m canopy apex and twelve 100 m masts. The shallow membrane, outward-raked lattice columns, cable fan, rooftop walkway and cylindrical service towers were studied against [Wikimedia: O2 Arena (9499773307)](https://commons.wikimedia.org/wiki/File:O2_Arena_(9499773307).jpg) and the [RSHP Millennium Dome project](https://rshp.com/projects/culture-and-leisure/millennium-dome/). Reference photographs are not included in the shipped assets. The model is an approximation, not a surveyed reconstruction.
+
+### Daylight and final rendering
+
+Poly Haven `kloofendal_48d_partly_cloudy_puresky`, CC0: https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky . The 2K HDR photograph supplies the visible sky and image-based lighting, with matching environment/background rotation. Three.js EffectComposer applies HDR multisampling, SMAA edge antialiasing and a single ACES/display conversion. The gentle scene-linear contrast and shadow/highlight grading in `src/post.js` adapts the MIT-licensed Slop New York `post-processing.js`; attribution and license remain in `src/vendor/slop-new-york/`.

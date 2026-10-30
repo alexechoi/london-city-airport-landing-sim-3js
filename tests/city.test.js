@@ -30,6 +30,13 @@ for (const clockwise of [false, true])
           c = new T.Vector3().fromBufferAttribute(p, i + 2);
         const geometric = b.sub(a).cross(c.sub(a)).normalize(),
           supplied = new T.Vector3().fromBufferAttribute(n, i);
+        if (Math.abs(supplied.y) < 0.1) {
+          const fromCentre = a.clone().sub(new T.Vector3(10, 9, 6));
+          assert.ok(
+            fromCentre.dot(supplied) > 0,
+            "wall normal must point outside footprint",
+          );
+        }
         assert.ok(
           geometric.dot(supplied) > 0.99,
           "normal must face the same side as its triangle",
