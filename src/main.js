@@ -1,7 +1,8 @@
 import "./style.css";
 import { cinematicPose, TOUR_TITLES } from "./cinematic.js";
 import { reserveLandmarks, buildLondonLandmarks } from "./london-landmarks.js";
-import { addBoundaryWeather } from "./weather.js";
+import { addBoundaryWeather, applyBoundaryFog } from "./weather.js";
+import { facadeMaterial } from "./facade-materials.js";
 import { airfieldMaterial } from "./airfield-materials.js";
 import { REGION, regionClearance, GATE, atGate, onAirportPavement } from "./flight-region.js";
 import { initCustomStart } from "./custom-start.js";
@@ -148,7 +149,13 @@ const grass = airfieldMaterial("grass"),
   yellow = mat(0xcbb66d);
 const airportMeshes = [];
 function box(x, y, z, w, h, d, m, parent = scene) {
-  const o = new T.Mesh(new T.BoxGeometry(w, h, d), m);
+  const geometry = new T.BoxGeometry(w,h,d);
+  if(m.userData.pbrFacade) {
+    const p=geometry.attributes.position,n=geometry.attributes.normal,uv=[],data=[];
+    for(let i=0;i<p.count;i++) {uv.push(Math.abs(n.getX(i))>.5?p.getZ(i):p.getX(i),Math.abs(n.getY(i))>.5?p.getZ(i):p.getY(i));data.push(47,1.6,4.2,h);}
+    geometry.setAttribute("uv",new T.Float32BufferAttribute(uv,2));geometry.setAttribute("building",new T.Float32BufferAttribute(data,4));
+  }
+  const o = new T.Mesh(geometry, m);
   o.position.set(x, y, z);
   o.castShadow = true;
   o.receiveShadow = true;
@@ -279,6 +286,7 @@ for (const w of waters) {
 }
 const shadowFocus = new T.Vector3(Infinity, 0, Infinity);
 function updateShadows() {
+  if (plane.visible && plane.position.y < 100) renderer.shadowMap.needsUpdate = true;
   const focus = new T.Vector3(camera.position.x, 0, camera.position.z);
   if (focus.distanceToSquared(shadowFocus) < 160 * 160) return;
   shadowFocus.copy(focus);
@@ -369,12 +377,26 @@ for (let i=0;i<7;i++) {
   label(String(i+1),-190,1.15,z,8,10,"#e4c566");
   box(-166,1.12,z,56,.015,.18,yellow);
 }
-// Terminal: glazed frontage, sawtooth roof, passenger piers and ramp equipment.
+// Terminal: metric curtain-wall glazing, standing-seam roof and rooftop plant.
+const terminalGlass=facadeMaterial("Facade001",{modern:true,tint:0xc6d6d5});
+terminalGlass.envMap=daylight;terminalGlass.envMapRotation.y=2.868;terminalGlass.envMapIntensity=1;
+const roofMetal=mat(0xb9c2c3,.48,.3);roofMetal.envMap=daylight;roofMetal.envMapIntensity=.3;
+roofMetal.onBeforeCompile=s=>{
+  s.vertexShader="varying vec3 vRoofWorld;\n"+s.vertexShader;
+  s.vertexShader=s.vertexShader.replace("#include <begin_vertex>","#include <begin_vertex>\nvRoofWorld=(modelMatrix*vec4(position,1.)).xyz;");
+  s.fragmentShader="varying vec3 vRoofWorld;\n"+s.fragmentShader;
+  s.fragmentShader=s.fragmentShader.replace("#include <color_fragment>","#include <color_fragment>\nfloat r=abs(fract(vRoofWorld.z/.7+.5)-.5)*.7;float seam=1.-smoothstep(.012,.012+fwidth(vRoofWorld.z),r);diffuseColor.rgb*=1.-seam*.18;");
+};
 box(-255, 9, -1450, 65, 18, 570, concrete);
-box(-218, 10, -1450, 4, 15, 555, glass);
+box(-218, 10, -1450, 4, 15, 555, terminalGlass);
+for(const y of [5.8,10,14.2])box(-215.8,y,-1450,.18,.16,555,dark);
 for (let z = -1730; z < -1160; z += 28) {
-  box(-253, 19, z, 70, 2, 24, white);
+  box(-253, 19, z, 70, 2, 24, roofMetal);
   box(-215, 9, z, 1, 18, 1, dark);
+}
+for(let z=-1700;z<-1160;z+=68) {
+  box(-267,21,z,8,2,5,roofMetal);box(-267,22.1,z,7,.15,4,dark);
+  for(let k=0;k<5;k++)box(-270+k*1.4,22.2,z,.12,.16,4,white);
 }
 label("LONDON CITY AIRPORT", -253, 20.2, -1440, 54, 280, "#314652");
 function cylinder(r1, r2, h, m, x, y, z, parent = scene) {
@@ -445,7 +467,7 @@ cityColliders.push(
   { minX: -288, maxX: -218, minZ: -1735, maxZ: -1165, h: 21 },
   { minX: -313, maxX: -287, minZ: -1853, maxZ: -1827, h: 57 },
 );
-const architectureStats = architecturalDetails(scene, mapData.buildings);
+const architectureStats = architecturalDetails(scene, [...mapData.buildings, ...contextData.buildings]);
 buildUrbanGround(
   scene,
   { ...mapData, roads: [...mapData.roads, ...contextData.roads] },
@@ -482,7 +504,8 @@ const vegetationCount = await addVegetation(
   landcover,
   waterData.map((p) => p.outer),
   collisions,
-  mapData.roads,
+  [...mapData.roads,...contextData.roads],
+  parkData,
 );
 const streetStats = addStreetDetails(scene, mapData.roads, waterData);
 const impact = new Impact(scene);
@@ -497,7 +520,7 @@ const crownWidth =
   ) * 0.93;
 const pyramid = new T.Mesh(
   new T.ConeGeometry(crownWidth / Math.SQRT2, 30, 4),
-  mat(0xb9c7d0, 0.35, 0.35),
+  mat(0x667e90, 0.38, 0.65),
 );
 pyramid.rotation.y = Math.PI / 4 - 0.125;
 pyramid.position.set(canadaX, 220, canadaZ);
@@ -578,6 +601,7 @@ for (let i = 0; i < 7; i++) {
 const airportBatch = mergeStaticMeshes(airportMeshes);
 airportMeshes.forEach((o) => scene.remove(o));
 scene.add(airportBatch);
+applyBoundaryFog(scene);
 let approach = "09";
 let customStart = null;
 function worldPos(x, y, z) {
@@ -891,6 +915,10 @@ function updateFlight(dt) {
     camera.lookAt(plane.position);
     plane.visible = true;
   }
+  const gatePoint=new T.Vector3(GATE.x,12,GATE.z).project(camera);
+  $("gate-marker").hidden=!flight.ground||flight.done||gatePoint.z>1||gatePoint.z< -1||Math.abs(gatePoint.x)>.95||Math.abs(gatePoint.y)>.9;
+  $("gate-marker").style.left=(gatePoint.x*.5+.5)*innerWidth+"px";
+  $("gate-marker").style.top=(-gatePoint.y*.5+.5)*innerHeight+"px";
   $("camera").textContent = ["CHASE · C", "OFFSET · C", "NOSE · C", "EXTERNAL · C"][view];
   $("speed").textContent = Math.round(flight.speed);
   $("alt").textContent = Math.max(0, Math.round((flight.y - 4.5) * 3.28084));

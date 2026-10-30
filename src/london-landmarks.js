@@ -29,7 +29,26 @@ export function buildLondonLandmarks(scene,environment) {
   const white=new T.MeshStandardMaterial({color:0xc5ccca,metalness:.2,roughness:.55});
   const dark=new T.MeshStandardMaterial({color:0x22353c,metalness:.45,roughness:.3,envMap:environment,envMapIntensity:.75});
   const glass=(tint=0xb3cbd1)=>{
-    const m=facadeMaterial("Facade001",{modern:true,tint});m.envMap=environment;m.envMapRotation.y=2.868;m.envMapIntensity=1.15;m.normalScale.set(.025,.025);cityMaterials.push(m);return m;
+    const m=new T.MeshStandardMaterial({color:tint,metalness:.72,roughness:.24,envMap:environment,envMapIntensity:1.15});
+    m.color.multiplyScalar(.28);
+    m.normalScale=new T.Vector2(0,0);
+    m.userData.pbrFacade=true;m.userData.reflectiveFacade=true;
+    m.customProgramCacheKey=()=>"landmark-curtain-wall-v1";
+    m.onBeforeCompile=s=>{
+      s.vertexShader='attribute vec4 building;varying vec2 vWindowMetres;\n'+s.vertexShader;
+      s.vertexShader=s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvWindowMetres=uv;');
+      s.fragmentShader='varying vec2 vWindowMetres;\n'+s.fragmentShader;
+      s.fragmentShader=s.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+        vec2 cell=vWindowMetres/vec2(1.5,3.8),fw=max(fwidth(cell),vec2(.0001));
+        vec2 edge=abs(fract(cell+.5)-.5);
+        vec2 lines=(1.-smoothstep(vec2(.012,.018),vec2(.012,.018)+fw,edge))*min(vec2(1.),vec2(.024,.036)/fw);
+        float panel=fract(sin(dot(floor(cell),vec2(127.1,311.7)))*43758.5453);
+        float detail=1.-smoothstep(.3,1.5,max(fw.x,fw.y));
+        diffuseColor.rgb*=mix(.94,.88+panel*.12,detail);
+        diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.06,.075,.085),max(lines.x,lines.y)*.85);
+      `);
+    };
+    cityMaterials.push(m);return m;
   };
   const blue=glass(),silver=glass(0xd5dedb),teal=glass(0x94bbb7);
   const rawGlass=new T.MeshStandardMaterial({color:0x789aa8,metalness:.8,roughness:.2,envMap:environment,envMapIntensity:1.3});
@@ -83,13 +102,28 @@ export function buildLondonLandmarks(scene,environment) {
   site("gherkin",180,32);
   const profile=[[0,22],[12,28],[40,32],[75,31],[110,27],[140,20],[164,11],[180,.6]];
   function radius(y) {let i=1;while(i<profile.length-1&&profile[i][0]<y)i++;const a=profile[i-1],b=profile[i];return T.MathUtils.lerp(a[1],b[1],(y-a[0])/(b[0]-a[0]));}
-  const gp=(j,y)=>{const a=j*Math.PI/18+y*.004;return [Math.cos(a)*radius(y),y,Math.sin(a)*radius(y)];};
-  for(let y=0;y<180;y+=9)for(let j=0;j<36;j++) {
-    const next=Math.min(180,y+9),a=gp(j,y),b=gp(j+1,y),c=gp(j+1,next),d=gp(j,next);
-    const m=((j+Math.floor(y/18))%6===0)?darkGlass:rawGlass;
-    face([a,b,c],m);face([a,c,d],m);
-    beam(a,c,.1);beam(a,b,.08);
-  }
+  const curvedProfile=new T.SplineCurve(profile.map(([y,r])=>new T.Vector2(r,y))).getPoints(100);
+  const gherkinGlass=rawGlass.clone();gherkinGlass.color.set(0x9ab2bc);gherkinGlass.roughness=.26;
+  const gherkinOrigin=origin.clone();
+  gherkinGlass.onBeforeCompile=s=>{
+    s.uniforms.gherkinOrigin={value:gherkinOrigin};
+    s.vertexShader='uniform vec3 gherkinOrigin;varying vec3 vGherkin;\n'+s.vertexShader;
+    s.vertexShader=s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvGherkin=position-gherkinOrigin;');
+    s.fragmentShader='varying vec3 vGherkin;\n'+s.fragmentShader;
+    s.fragmentShader=s.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+      float theta=atan(vGherkin.z,vGherkin.x)/6.2831853;
+      float spiral=fract(theta*6.-vGherkin.y*.009);
+      float aa=max(fwidth(spiral),.004);
+      float stripe=smoothstep(.10,.10+aa,spiral)*(1.-smoothstep(.29,.29+aa,spiral));
+      diffuseColor.rgb*=mix(1.,.30,stripe);
+      vec2 diagonal=vec2(theta*36.+vGherkin.y/9.,theta*36.-vGherkin.y/9.);
+      vec2 distance=abs(fract(diagonal+.5)-.5);
+      vec2 width=max(fwidth(diagonal),vec2(.001));
+      vec2 frame=(1.-smoothstep(vec2(.04),vec2(.04)+width,distance))*min(vec2(1.),vec2(.08)/width);
+      diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.08,.10,.12),max(frame.x,frame.y)*.9);
+    `);
+  };
+  add(new T.LatheGeometry(curvedProfile,96),gherkinGlass);
   // Leadenhall's sloping south face, expressed mega-frame and northern service core.
   site("leadenhall",225,33,-.1);
   const base=[[-23,0,-32],[23,0,-32],[23,0,32],[-23,0,32]],top=[[-23,225,15],[23,225,15],[23,225,32],[-23,225,32]];
@@ -104,10 +138,15 @@ export function buildLondonLandmarks(scene,environment) {
   site("walkie",160,34,.08);
   const wp=(i,y)=>{const a=i/32*Math.PI*2,w=22+11*Math.pow(y/160,1.5),d=16+7*y/160;return [Math.sign(Math.cos(a))*Math.pow(Math.abs(Math.cos(a)),.3)*w,y,Math.sign(Math.sin(a))*Math.pow(Math.abs(Math.sin(a)),.3)*d];};
   for(let i=0;i<32;i++)for(let y=0;y<156;y+=12) {
-    face([wp(i,y),wp(i+1,y),wp(i+1,Math.min(160,y+12)),wp(i,Math.min(160,y+12))],teal);
+    face([wp(i,y),wp(i+1,y),wp(i+1,Math.min(160,y+12)),wp(i,Math.min(160,y+12))],y>=144?darkGlass:teal);
     beam(wp(i,y),wp(i,Math.min(160,y+12)),.27,white);
   }
-  box(0,160,0,64,2.5,43,white);
+  for(let i=0;i<20;i++) {
+    const x0=-33+i*3.3,x1=x0+3.3,roof=x=>152+8*Math.sqrt(Math.max(0,1-(x/33)**2));
+    face([[x0,roof(x0),-23],[x1,roof(x1),-23],[x1,roof(x1),23],[x0,roof(x0),23]],rawGlass);
+    for(const z of [-23,23])beam([x0,roof(x0),z],[x1,roof(x1),z],.65,white);
+    if(i%2===0)beam([x0,roof(x0),-23],[x0,roof(x0),23],.15,white);
+  }
   // 22 Bishopsgate has an irregular faceted footprint and stepped crown.
   site("bishopsgate",278,39,.1);
   const outline=[[-28,-28],[13,-31],[31,-17],[33,10],[18,26],[-15,29],[-30,12]];

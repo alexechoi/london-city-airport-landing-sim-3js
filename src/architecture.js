@@ -5,7 +5,7 @@ export function architecturalDetails(scene, buildings) {
     plant = [],
     caps = [],
     chimneys = [],
-    solar = [];
+    solar = [], fans = [], screens = [];
   const dummy = new T.Object3D();
   function push(list, x, y, z, w, h, d, angle = 0) {
     list.push({ x, y, z, w, h, d, angle });
@@ -17,7 +17,7 @@ export function architecturalDetails(scene, buildings) {
     if (p.length < 3) continue;
     const cx = p.reduce((a, b) => a + b[0], 0) / p.length,
       cz = p.reduce((a, b) => a + b[1], 0) / p.length;
-    if (Math.abs(cx) > 1800 || cz < -7200 || cz > 500) continue;
+    if (Math.abs(cx) > 3200 || cz < -13500 || cz > 1800) continue;
     function inside(x, z) {
       let hit = false;
       for (let j = 0, k = p.length - 1; j < p.length; k = j++) {
@@ -73,12 +73,12 @@ export function architecturalDetails(scene, buildings) {
       w = Math.max(...xs) - Math.min(...xs),
       d = Math.max(...zs) - Math.min(...zs);
     if (w > 14 && d > 14 && height > 8) {
-      const count = tall ? 3 + (i % 4) : 1 + (i % 3);
+      const count = tall ? 5 + (i % 7) : 1 + (i % 3);
       for (let k = 0; k < count; k++) {
         const x = cx + (random() - 0.5) * w * 0.65,
           z = cz + (random() - 0.5) * d * 0.65,
-          ww = 2 + random() * 4,
-          dd = 2 + random() * 5,
+          ww = 2 + random() * (tall ? 7 : 4),
+          dd = 2 + random() * (tall ? 10 : 5),
           hh = 0.8 + random() * 1.5;
         if (
           ![
@@ -90,6 +90,8 @@ export function architecturalDetails(scene, buildings) {
         )
           continue;
         push(plant, x, height + hh / 2, z, ww, hh, dd);
+        for (let f=0; f<Math.max(1,Math.floor(dd/2.5)); f++)
+          push(fans,x,height+hh+.23,z-dd*.35+f*2.5,Math.min(ww*.65,1.7),.16,Math.min(ww*.65,1.7));
         push(caps, x, height + hh + 0.1, z, ww + 0.2, 0.2, dd + 0.2);
         for (let vent = 0; vent < 3; vent++)
           push(
@@ -102,8 +104,21 @@ export function architecturalDetails(scene, buildings) {
             dd * 0.8,
           );
       }
-      if (tall && inside(cx, cz))
-        push(trim, cx, height + 6, cz, 0.16, 12, 0.16);
+      if (tall && inside(cx, cz)) {
+        push(trim, cx, height + 8, cz, .22, 16, .22);
+        const pw=Math.min(w*.48,24),pd=Math.min(d*.45,28);
+        if ([[cx-pw/2,cz-pd/2],[cx+pw/2,cz-pd/2],[cx+pw/2,cz+pd/2],[cx-pw/2,cz+pd/2]].every(([x,z])=>inside(x,z))) {
+          // Lift overruns, mechanical floors and louvred plant screens give
+          // office roofs their characteristic deep, irregular silhouette.
+          push(plant,cx,height+2.3,cz,pw,4.6,pd);
+          push(caps,cx,height+4.7,cz,pw+.4,.3,pd+.4);
+          for(let y=.6;y<4.5;y+=.45) {
+            for(const z of [-1,1])push(screens,cx,height+y,cz+z*(pd/2+.06),pw,.12,.16);
+            for(const x of [-1,1])push(screens,cx+x*(pw/2+.06),height+y,cz,.16,.12,pd);
+          }
+          for(let f=0;f<3;f++)push(fans,cx-pw*.3+f*pw*.3,height+4.95,cz,2.6,.25,2.6);
+        }
+      }
       if (!tall && w * d > 700 && i % 4 === 0)
         for (let a = -2; a <= 2; a++)
           for (let b = -1; b <= 1; b++) {
@@ -120,9 +135,9 @@ export function architecturalDetails(scene, buildings) {
     }
   }
 
-  function batch(items, material) {
+  function batch(items, material, geometry = new T.BoxGeometry(1, 1, 1)) {
     const m = new T.InstancedMesh(
-      new T.BoxGeometry(1, 1, 1),
+      geometry,
       material,
       items.length,
     );
@@ -137,6 +152,8 @@ export function architecturalDetails(scene, buildings) {
     m.receiveShadow = true;
     scene.add(m);
   }
+  batch(fans,new T.MeshStandardMaterial({color:0x182126,roughness:.8}),new T.CylinderGeometry(.5,.5,1,12));
+  batch(screens,new T.MeshStandardMaterial({color:0x737b7c,roughness:.6,metalness:.4}));
   batch(
     trim,
     new T.MeshStandardMaterial({

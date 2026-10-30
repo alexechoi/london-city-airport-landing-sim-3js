@@ -26,3 +26,35 @@ export function addBoundaryWeather(scene) {
     for(const cloud of clouds) cloud.quaternion.copy(camera.quaternion);
   }};
 }
+
+// Fade the scenery itself at the map perimeter, so the edge is also hidden when
+// viewed from well inside London. Camera-only fog cannot hide a nearby side edge.
+export function applyBoundaryFog(scene) {
+  const seen=new Set();
+  const haze=position=>`float borderEdge=min(min(${position}.x-(${REGION.minX.toFixed(1)}),${REGION.maxX.toFixed(1)}-${position}.x),min(${position}.z-(${REGION.minZ.toFixed(1)}),${REGION.maxZ.toFixed(1)}-${position}.z));float borderMist=1.-smoothstep(-250.,1050.,borderEdge);gl_FragColor.rgb=mix(gl_FragColor.rgb,fogColor,borderMist);`;
+  scene.traverse(o=>{
+    for(const m of (Array.isArray(o.material)?o.material:[o.material])) {
+      if(!m||!m.fog||seen.has(m))continue;seen.add(m);
+      if(m.isShaderMaterial) {
+        if(m.fragmentShader.includes("varying vec4 worldPosition;"))m.fragmentShader=m.fragmentShader.replace("#include <fog_fragment>","#include <fog_fragment>\n"+haze("worldPosition"));
+        continue;
+      }
+      const original=m.onBeforeCompile,cache=m.customProgramCacheKey.bind(m),key=cache();
+      m.customProgramCacheKey=()=>key+"-region-fog";
+      m.onBeforeCompile=function(s,...rest) {
+        original.call(this,s,...rest);
+        s.vertexShader="varying vec3 vBoundaryPosition;\n"+s.vertexShader;
+        s.vertexShader=s.vertexShader.replace("#include <project_vertex>",`#include <project_vertex>
+          vec4 boundaryLocal=vec4(transformed,1.);
+          #ifdef USE_INSTANCING
+          boundaryLocal=instanceMatrix*boundaryLocal;
+          #endif
+          vBoundaryPosition=(modelMatrix*boundaryLocal).xyz;
+        `);
+        s.fragmentShader="varying vec3 vBoundaryPosition;\n"+s.fragmentShader;
+        s.fragmentShader=s.fragmentShader.replace("#include <fog_fragment>","#include <fog_fragment>\n"+haze("vBoundaryPosition"));
+      };
+      m.needsUpdate=true;
+    }
+  });
+}

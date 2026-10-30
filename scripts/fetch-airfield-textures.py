@@ -12,4 +12,4 @@ def fetch(asset):
   url=d[key]['1k']['jpg']['url']
   subprocess.run(['curl','-sfL','--retry','2','--max-time','40',url,'-o',str(OUT/(asset+'-'+name+'.jpg'))],check=True)
  print(asset,flush=True)
-with ThreadPoolExecutor(3) as pool:list(pool.map(fetch,['clean_asphalt','concrete_floor_02','leafy_grass']))
+with ThreadPoolExecutor(3) as pool:list(pool.map(fetch,['clean_asphalt','concrete_floor_worn_001','leafy_grass']))

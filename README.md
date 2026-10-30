@@ -17,15 +17,15 @@ WebGL2 desktop browser recommended. Touch controls are provided on small screens
 
 ## Fly
 
-Runway **09, from the west over Canary Wharf**, is the default. Select **27** for the east approach. Fly the 5.5° glideslope, aim for 125 knots, flare gently below 50 feet, and hold Space after touchdown.
+Runway **09, from the west over Canary Wharf**, is the default. Select **27** for the east approach. Fly the 5.5° glideslope, aim for 125 knots, flare gently below 50 feet, and hold Space after touchdown. Slow below 20 knots, use a marked runway exit, and follow the yellow taxi route to reserved **gate 4**. W/S controls taxi thrust; left/right steers the nosewheel. Stop nose-in at the gate to finish.
 
 | Control | Action |
 | --- | --- |
 | ↑ / ↓ | Nose down / nose up |
-| ← / → | Bank left / right |
+| ← / → | Bank in flight / steer while taxiing |
 | W / S | Increase / decrease thrust |
 | Space | Wheel brakes |
-| C | Chase / nose / external camera |
+| C | Centered chase / offset chase / nose / external camera |
 | P | Pause / resume |
 | R | Restart current approach |
 | M | Sound on / off |
@@ -37,7 +37,7 @@ Wings must be level, touchdown must be inside the runway, sink rate below 4 m/s 
 
 ## Cinematic and capture
 
-Watch flythrough, or add `?demo`. Four looping 10-second shots: Canary Wharf, the O2 and Greenwich Peninsula, steep final, and touchdown. H hides titles, P pauses, Escape exits. The capture script records four five-second shots (skyline, O2, final and touchdown) as JPEG frames and an H.264 MP4 with ffmpeg:
+Watch flythrough, or add `?demo`. Six looping eight-second shots: banked turns at the Shard, City of London, London Eye, Canary Wharf and the O2, followed by final approach and touchdown. H hides titles, P pauses, Escape exits. The capture script records six five-second shots as JPEG frames and an H.264 MP4 with ffmpeg:
 
 ```sh
 npm run dev
@@ -48,7 +48,7 @@ Install Chromium and ffmpeg, or set `CHROMIUM_PATH`. Captures go into `work/`, w
 
 ## Rendering
 
-Real London OSM footprints, surrounding districts, waterways, green spaces and roads, batched PBR facades with aligned colour, normal, roughness and metalness maps, textured roofs, metric scene coordinates, detailed GPL-licensed E190 model and BA livery, photographic ground surfaces, photographic HDR daylight and matching horizon haze, Ultra-Water FFT slopes with planar water reflections, HDR multisampling and SMAA, view-following scenery shadows, runway/PAPI lights, and synthesised engine audio. Flight dynamics and some scenery are approximate.
+Real London OSM footprints, surrounding districts, waterways, green spaces and roads, batched PBR facades with aligned colour, normal, roughness and metalness maps, textured roofs, metric scene coordinates, detailed GPL-licensed E190 model and BA livery, photographic ground surfaces, photographic HDR daylight and matching horizon haze, Ultra-Water FFT slopes with planar water reflections, HDR multisampling and SMAA, metre-scale screen-space contact occlusion, view-following scenery shadows, runway/PAPI lights, and synthesised engine audio. Flight dynamics and some scenery are approximate.
 
 See [sources and licenses](docs/SOURCES.md). Application: Apache-2.0. OSM-derived databases: ODbL. Vendored Ultra-Water: MIT. Surface photography and authored ambientCG facade textures: CC0. E190 aircraft assets: GPL-2.0-or-later with source included. Land-cover raster: CC BY 4.0. This is an independent entertainment project.
 
@@ -56,7 +56,7 @@ Netlify uses `netlify.toml`: `npm run build`, publish `dist`. No server, paid ma
 
 ## Demo media
 
-- [Revised 20-second flythrough](public/flythrough.mp4)
+- [Revised 30-second flythrough](public/flythrough.mp4)
 - [Title screen](public/screenshots/title.png)
 - [Final approach screenshot](public/screenshots/approach.jpg)
 
@@ -68,15 +68,15 @@ The revised video is rendered from the actual Three.js scene at 1280×720, 24 fp
 
 ## Rendering and control fixes
 
-The renderer uses reversed depth where supported, with a logarithmic-depth fallback for kilometre-scale scenery, separated ground layers, anisotropic facade textures and softer water slopes. Redundant overlapping road surfaces and randomly placed trees were removed. The chase camera follows the aircraft heading with a small side offset; leaving the approach does not end the flight.
+The renderer uses reversed depth where supported, with a logarithmic-depth fallback for kilometre-scale scenery, separated ground layers, anisotropic facade textures and softer water slopes. Redundant overlapping road surfaces and randomly placed trees were removed. The default chase camera is centered behind the aircraft; the side-offset view remains selectable. Flying away from the approach is allowed within the mapped London area. An edge warning, increasing haze and cloud banks mark its limit; crossing the boundary ends the session. Custom starts must be inside this area.
 
-`node scripts/check-revision.mjs` checks all four cardinal camera headings on both approaches, flight outside the old boundary, impact effects and retry cleanup, and saves 48 motion frames.
+`node scripts/check-revision.mjs` checks all four cardinal camera headings on both approaches, flight within the mapped area, impact effects and retry cleanup, and saves 48 motion frames.
 
 Revision evidence: [chase view](public/screenshots/chase.jpg), [building impact](public/screenshots/explosion.png), [camera turn capture](public/camera-check.mp4).
 
 ## Architecture and materials
 
-The city uses six authored PBR facade families with recessed frames, blinds, brick and curtain-wall details. Per-building seeds vary tint, window bay widths, storey heights and texture offsets. Curtain walls reflect a static Canary Wharf city probe. Surrounding districts retain brick, stone, industrial and glass material families, including during custom flights. Normal, roughness, metalness and occlusion maps share metric UVs; mipmaps and anisotropic filtering reduce distant shimmer. Landmark shaders retain filtered geometric patterns. Residential footprints receive pitched roofs where their shape supports them. Tall buildings have roof parapets, corner trim and plant equipment. One Canada Square’s 205 m body and 30 m pyramid share the same OSM footprint.
+The city uses six authored PBR facade families with recessed frames, blinds, brick and curtain-wall details. Per-building seeds vary tint, window bay widths, storey heights and texture offsets. Curtain walls reflect a static Canary Wharf city probe. Surrounding districts retain brick, stone, industrial and glass material families, including during custom flights. Normal, roughness, metalness and occlusion maps share metric UVs; mipmaps and anisotropic filtering reduce distant shimmer. Landmark shaders retain filtered geometric patterns. Residential footprints receive pitched roofs where their shape supports them. Tall buildings have roof parapets, corner trim, mechanical penthouses, louvred plant screens and fan units. Flat roofs vary between gravel and darker membrane finishes. Bespoke glass landmarks use fine curtain-wall mullions and district reflections, with continuous curved glazing and spiral bands on the Gherkin. Tree groups extend along mapped park boundaries west of the aerial vegetation mask. One Canada Square’s 205 m body and 30 m pyramid share the same OSM footprint.
 
 Ground surfaces use separate asphalt, paving, roof and vegetation materials, with world-space wear and filtered joints. Land cover is derived from the attributed aerial reference. Tree placement excludes mapped water, roads and building bounds. The loading overlay remains visible until the aircraft, scenery, textures and first rendered frames are ready; failed loads offer retry.
 
@@ -86,3 +86,9 @@ The O2 is modelled as a 365 m tensioned canopy with a 52 m apex, twelve outward-
 For Linux machines with Mesa, the capture script also supports `CAPTURE_ANGLE=gl-egl` with `LIBGL_ALWAYS_SOFTWARE=1 EGL_PLATFORM=surfaceless`. Capture uses full-quality antialiasing; normal play adapts multisampling and reflection resolution on detected software renderers. The video is rendered offline and is not a real-time performance benchmark.
 
 [Custom-start map](public/screenshots/custom-start-desktop.png) · [Mobile map setup](public/screenshots/custom-start-mobile.png) · [Steep banking](public/screenshots/steep-bank.png)
+
+## Landmark and airport revision
+
+The Shard, Gherkin, Leadenhall Building, Walkie-Talkie, 22 Bishopsgate, Heron Tower, London Eye, City Hall / the Crystal, and Newham Dockside use dedicated forms and facade treatments. The Eye has 32 upright moving capsules and a rotating wheel. Airfield surfaces use metre-scale photographed asphalt, concrete and grass textures, normal and roughness maps, concrete slab joints and touchdown rubber wear. Road vehicles move through the connected road network.
+
+`node scripts/check-new-features.mjs` verifies the camera choices, landing-to-taxi flow on both runways, gate completion, boundary fog/session ending, retry and moving traffic. Unit tests cover taxi physics, parking conditions, the mapped boundary and preservation of facade data when geometry is batched.

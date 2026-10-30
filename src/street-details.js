@@ -1,7 +1,7 @@
 import * as T from "three";
 // Lightweight instanced details follow mapped roads and water boundaries, not a random grid.
 export function addStreetDetails(scene, roads, water) {
-  const bodies = [],
+  const shadows = [], bodies = [],
     cabs = [],
     rubber = [],
     lamps = [],
@@ -83,6 +83,7 @@ export function addStreetDetails(scene, roads, water) {
           travelAngle,
           bus ? 0xb72824 : paint[Math.floor(rand() * paint.length)],
         );
+        put(shadows,x,.12,z,ww*1.15,.01,ll*1.1,travelAngle);
         if (bus) {
           for (const y of [1.7, 3.25])
             put(busWindows, x, y, z, ww + 0.025, 0.78, ll * 0.83, travelAngle);
@@ -179,10 +180,12 @@ export function addStreetDetails(scene, roads, water) {
       m.frustumCulled=false;
       animated.push({mesh:m,items});
     }
-    m.castShadow = true;
+    m.castShadow = !items.some(v=>v.vehicle);
+    if(items===shadows){material.transparent=true;material.opacity=.25;material.depthWrite=false;}
     m.receiveShadow = true;
     scene.add(m);
   }
+  batch(shadows, 0x141c20);
   batch(bodies, 0xffffff, 0.35, 0.35);
   batch(cabs, 0x29434d, 0.45, 0.2);
   batch(busWindows, 0x1b303a, 0.35, 0.25);

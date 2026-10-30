@@ -1,4 +1,5 @@
 import * as T from "three";
+import { ContactOcclusionPass } from "./contact-occlusion.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
@@ -12,7 +13,14 @@ export function createPost(renderer, scene, camera, software = false) {
   renderer.info.autoReset = false;
   composer.renderTarget1.samples = software ? 0 : 4;
   composer.renderTarget2.samples = software ? 0 : 4;
+  for (const target of [composer.renderTarget1, composer.renderTarget2]) {
+    target.depthTexture = new T.DepthTexture(1, 1, T.UnsignedIntType);
+  }
   composer.addPass(new RenderPass(scene, camera));
+  // Logarithmic-depth fallback requires a different reconstruction. Reverse depth
+  // is supported on current desktop/mobile WebGL2 browsers; preserve fallback rendering.
+  if (renderer.capabilities.reversedDepthBuffer)
+    composer.addPass(new ContactOcclusionPass(camera, true));
   const grade = new ShaderPass({
     uniforms: {
       tDiffuse: { value: null },

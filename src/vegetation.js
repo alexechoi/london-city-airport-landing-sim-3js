@@ -18,6 +18,7 @@ export async function addVegetation(
   waterRings,
   collisions,
   roads,
+  parks = [],
 ) {
   if (!landcover.image)
     await new Promise((resolve, reject) => {
@@ -55,21 +56,42 @@ export async function addVegetation(
   let seed = 754;
   const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
   const spots = [];
-  for (let x = -2400; x < 2300; x += 21)
-    for (let z = -7800; z < 1800; z += 21) {
+  const parkCells=new Map();
+  for(const park of parks) {
+    const xs=park.outer.map(p=>p[0]),zs=park.outer.map(p=>p[1]);
+    for(let x=Math.floor(Math.min(...xs)/250);x<=Math.floor(Math.max(...xs)/250);x++)
+      for(let z=Math.floor(Math.min(...zs)/250);z<=Math.floor(Math.max(...zs)/250);z++) {
+        const key=x+','+z;if(!parkCells.has(key))parkCells.set(key,[]);parkCells.get(key).push(park);
+      }
+  }
+  function mappedParkCover(x,z) {
+    for(const p of parkCells.get(Math.floor(x/250)+','+Math.floor(z/250))||[]) {
+      if(!inside(x,z,p.outer)||p.holes.some(h=>inside(x,z,h)))continue;
+      // Keep central lawns open: tree groups follow park boundaries.
+      let edge=Infinity;
+      for(let i=1;i<p.outer.length;i++) {
+        const a=p.outer[i-1],b=p.outer[i],dx=b[0]-a[0],dz=b[1]-a[1];
+        const t=T.MathUtils.clamp(((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz||1),0,1);
+        edge=Math.min(edge,Math.hypot(x-a[0]-t*dx,z-a[1]-t*dz));
+      }
+      return edge<23?1:0;
+    }
+    return 0;
+  }
+  for (let x = -5500; x < 6000; x += 21)
+    for (let z = -13300; z < 5300; z += 21) {
       const px = x + rnd() * 16,
         pz = z + rnd() * 16;
       const e = pz * 0.998806 + px * 0.04885,
         n = px * 0.998806 - pz * 0.04885,
         u = (0.06602 + e / 69298 + 0.05) / 0.16,
         v = (51.53 - (51.50494 + n / 111320)) / 0.05;
-      if (u < 0 || u >= 1 || v < 0 || v >= 1) continue;
-      const cover =
-        pixels[
+      const inRaster=u>=0&&u<1&&v>=0&&v<1;
+      const cover = inRaster ? pixels[
           (Math.floor(v * canvas.height) * canvas.width +
             Math.floor(u * canvas.width)) *
             4
-        ] / 255;
+        ] / 255 : mappedParkCover(px,pz);
       if (
         cover < 0.65 ||
         rnd() > 0.55 ||

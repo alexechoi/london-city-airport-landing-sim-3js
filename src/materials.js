@@ -44,7 +44,7 @@ export function createCityMaterials() {
       3: ["Facade018A", {}],
       4: ["Facade019A", { tint: 0xe0e1dd }],
       5: ["Facade005", { modern: true }],
-      6: ["Facade006", { modern: true }],
+      6: ["Facade006", { modern: true, tint: 0x7e8d94 }],
       8: ["Facade018A", { context: true }],
       10: ["Facade001", { modern: true, tint: 0xc0e2ea }],
     };
@@ -91,7 +91,7 @@ export function createCityMaterials() {
       float detail=1.-smoothstep(.22,1.,max(fw.x,fw.y));
       float room=mix(.5,hashCity(floor(grid)+vec2(identity,identity*.37)),detail);
       float modern=${idx === 8 ? "step(40.,vBuilding.w)" : modern ? "1." : "0."};
-      float wx=${idx === 9 ? "mix(.15,.065,step(185.,vMetric.y))" : "mix(.23,.035,modern)"},wy=${idx === 9 ? "mix(.18,.10,step(185.,vMetric.y))" : "mix(.23,.20,modern)"};
+      float wx=${idx === 9 ? "mix(.075,.055,step(185.,vMetric.y))" : "mix(.23,.035,modern)"},wy=${idx === 9 ? "mix(.12,.10,step(185.,vMetric.y))" : "mix(.23,.20,modern)"};
       float opening=pulse(cell.x,wx,1.-wx,fw.x)*pulse(cell.y,wy,.93,fw.y);
       ${idx === 7 ? `opening*=smoothstep(vBuilding.w-3.5,vBuilding.w-2.8,vMetric.y);` : ""}
       ${idx === 9 ? `opening*=1.-smoothstep(200.,201.,vMetric.y);opening*=1.-(smoothstep(173.,173.4,vMetric.y)*(1.-smoothstep(175.5,176.,vMetric.y)));` : ""}
@@ -170,12 +170,12 @@ export function surfaceMaterial(kind = "paving", landcover = null) {
           : kind === "road"
             ? surfacePhoto("ground/clean_asphalt-color")
             : null;
-  const normalName = kind === "road" ? "ground/clean_asphalt-normal" : kind === "park" ? "ground/leafy_grass-normal" : kind === "paving" ? "concrete_pavement-nor_gl" : kind === "roof" ? "ground/concrete_floor_02-normal" : null;
+  const normalName = kind === "road" ? "ground/clean_asphalt-normal" : kind === "park" ? "ground/leafy_grass-normal" : kind === "paving" ? "concrete_pavement-nor_gl" : kind === "roof" ? "ground/concrete_floor_worn_001-normal" : null;
   if (normalName) { m.normalMap=surfacePhoto(normalName,false);m.normalScale.set(.3,.3); }
   m.onBeforeCompile = (s) => {
     if (kind === "terrain") {
       s.uniforms.grassSurface={value:surfacePhoto("ground/leafy_grass-color")};
-      s.uniforms.urbanSurface={value:surfacePhoto("ground/concrete_floor_02-color")};
+      s.uniforms.urbanSurface={value:surfacePhoto("ground/concrete_floor_worn_001-color")};
     }
     if (floorPhoto) s.uniforms.floorPhoto = { value: floorPhoto };
     if (kind === "roof") s.uniforms.flatRoofPhoto = { value: surfacePhoto("concrete") };
@@ -218,12 +218,19 @@ export function surfaceMaterial(kind = "paving", landcover = null) {
     vec2 geoUV=vec2((.06602+en.x/69298.+.05)/.16,(51.50494+en.y/111320.-51.48)/.05);
     float vegetation=texture2D(landcover,clamp(geoUV,vec2(.001),vec2(.999))).r;
     float inMap=step(0.,geoUV.x)*step(geoUV.x,1.)*step(0.,geoUV.y)*step(geoUV.y,1.);
-    vegetation=mix(.35,vegetation,inMap);
-    vec3 garden=texture2D(grassSurface,p/6.).rgb*mix(.8,1.05,broad);
-    base=mix(texture2D(urbanSurface,p/7.).rgb*.65,garden,vegetation);`
+    vegetation=mix(.02,vegetation,inMap);
+    vec3 grassPhoto=texture2D(grassSurface,p/6.).rgb;vec3 garden=vec3(.10,.155,.043)*(.65+dot(grassPhoto,vec3(.2126,.7152,.0722))*1.8)*mix(.8,1.05,broad);
+    vec3 urbanPhoto=texture2D(urbanSurface,p/7.).rgb;base=mix(urbanPhoto*1.2,garden,vegetation);`
         : ""
     }
-${roof ? `base=mix(base,texture2D(flatRoofPhoto,p/6.).rgb*.65,.7*(1.-vRoofSlope));base*=.82+hashCity(vec2(vRoofSeed,17.))*.32;` : ""}
+${roof ? `float roofType=hashCity(vec2(vRoofSeed,17.));
+vec3 aggregate=texture2D(flatRoofPhoto,p/5.).rgb;
+vec3 membrane=mix(vec3(.045,.055,.064),vec3(.13,.145,.15),roofType)*(.8+aggregate*.7);
+vec3 gravel=aggregate*vec3(.42,.43,.42);
+vec3 flatRoof=mix(membrane,gravel,smoothstep(.6,.72,roofType));
+float lap=max(band(p.x+vRoofSeed,1.2,.018),band(p.y,8.,.025));
+flatRoof*=1.-lap*.16;
+base=mix(flatRoof,base,vRoofSlope);` : ""}
 ${floorPhoto ? `vec3 photographed=texture2D(floorPhoto,p/${kind === "road" ? "5." : "4."}).rgb;base=mix(base,photographed*${kind === "roof" ? ".72" : ".8"},${kind === "road" ? ".5" : kind === "roof" ? ".75*vRoofSlope" : ".75"});` : ""}
     base*=mix(.97,1.03,fine)*(1.-damp*${roof ? ".015" : ".08"});
     ${road ? `float lineWidth=max(fwidth(vRoadUV.y),.001);float centre=clamp((.11-abs(vRoadUV.y))/lineWidth+.5,0.,1.)*min(1.,.11/lineWidth);float dash=pulse(fract(vRoadUV.x/9.),0.,.33,fwidth(vRoadUV.x/9.));base=mix(base,vec3(.62,.60,.52),centre*dash*vRoadUV.z*.75);` : ""}

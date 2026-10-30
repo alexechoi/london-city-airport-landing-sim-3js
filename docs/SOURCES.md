@@ -61,7 +61,7 @@ Curtain-wall reflections use a static 256-pixel cube probe above Canary Wharf, c
 
 ## Airfield and London landmark revision
 
-The airfield uses Poly Haven CC0 `clean_asphalt`, `concrete_floor_02` and `leafy_grass`, with 1K diffuse, OpenGL normal and roughness maps. `scripts/fetch-airfield-textures.py` downloads the source files. Materials repeat in world metres; concrete joints, touchdown tyre wear and mowing variation are additional shader details. The same photographed ground surfaces contribute to city paving, roads and green spaces.
+The airfield uses Poly Haven CC0 `clean_asphalt`, `concrete_floor_worn_001` and `leafy_grass`, with 1K diffuse, OpenGL normal and roughness maps. `scripts/fetch-airfield-textures.py` downloads the source files. Materials repeat in world metres; concrete joints, touchdown tyre wear and mowing variation are additional shader details. The same photographed ground surfaces contribute to city paving, roads and green spaces.
 
 New landmark models are reference-based approximations at geographic positions, replacing overlapping OSM building parts. Reference photographs were inspected and are not distributed:
 - [The Shard](https://commons.wikimedia.org/wiki/File:The_Shard_at_sunset_2017_(cropped).jpg): tapered faceted glass and split crown.

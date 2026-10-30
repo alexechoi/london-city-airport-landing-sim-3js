@@ -15,7 +15,7 @@ The wider city still uses simplified OSM extrusions and estimated heights where 
 
 ## Verification
 
-- Ten unit tests passed for wall/roof normals, swept building collision, flight, touchdown, braking, stronger bank authority and custom-start coordinate/heading conversion.
+- Fourteen unit tests passed for wall/roof normals, swept building collision, flight, touchdown, braking, stronger bank authority and custom-start coordinate/heading conversion.
 - Browser checks passed for both approaches, touchdown, braking, crash/retry, demo, mobile controls, loading gates and load-failure retry after the HDR/postprocessing pass.
 - The capture script rejects browser/console errors and records the actual scene at deterministic simulation times, including the O2 shot.
 - `scripts/check-revision.mjs` passed: four cardinal camera headings on both runways, flight outside the old boundary, building impacts and restart cleanup. It also captured 48 camera-turn frames.
@@ -24,3 +24,13 @@ The wider city still uses simplified OSM extrusions and estimated heights where 
 The offline MP4 is demonstration media, not a real-time frame-rate measurement. Hardware uses multisampling; detected software renderers use a cheaper normal-play configuration. Capture explicitly requests full quality.
 
 Sources, asset licenses and reconstruction scripts are in [SOURCES.md](SOURCES.md).
+
+## Latest revision
+
+The earlier review images were still visibly procedural: repeated high-contrast facade grids, bare flat roofs, inadequate vegetation in the western districts, and oversimplified landmark glazing. This revision adds view-space contact shading from the existing render depth, reduces facade contrast, adds mechanical roof structures across the City as well as Canary Wharf, and separates membrane/gravel roof finishes. The contact pass respects reversed depth and skips the logarithmic-depth fallback.
+
+The Gherkin now has a smooth curved profile and continuous spiral glazing. Dedicated curtain-wall materials remove the pillow-like normal-map distortion from the Shard and other bespoke glass towers. City Hall / the Crystal and Newham Dockside are separate models; both are included. Park-boundary vegetation now extends beyond the original eastern land-cover mask. The airport has neutral photographed concrete, metre-scale asphalt/grass, curtain-wall terminal glazing, roof seams and a taxi route to stand 4.
+
+Gameplay checks cover continued taxiing after touchdown on both runways, parking at the gate, the centered and offset cameras, moving road traffic, boundary fog and session termination. The tour uses banked turns around the Shard, City, Eye, Canary Wharf and O2 before returning to the runway. These are staged demonstration paths, not measured real-world flight procedures.
+
+The overall scenery remains an approximation. Generic OSM buildings still lack surveyed facade identities and some detailed massing; the screenshots should not be described as photographic or as matching the reference photographs.

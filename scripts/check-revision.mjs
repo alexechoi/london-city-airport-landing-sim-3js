@@ -39,29 +39,27 @@ for (const runway of ["09", "27"])
       ({ runway, heading }) => {
         sim.choose(runway);
         sim.start("fly");
-        sim.setFlight({ x: 6000, z: 6000, y: 800, heading });
+        sim.setFlight({ x: 2500, z: 4000, y: 800, heading });
         sim.advance(0);
         return { p: sim.camera.position, done: sim.flight.done };
       },
       { runway, heading },
     );
     const sign = runway === "09" ? -1 : 1,
-      px = runway === "09" ? -6000 : 6000,
-      pz = runway === "09" ? -7508 : 6000;
+      px = runway === "09" ? -2500 : 2500,
+      pz = runway === "09" ? -5508 : 4000;
     assert.ok(
       Math.abs(
         v.p[0] -
           px +
-          Math.sin((heading * Math.PI) / 180) * sign * 66 -
-          Math.cos((heading * Math.PI) / 180) * sign * 14,
+          Math.sin((heading * Math.PI) / 180) * sign * 66,
       ) < 0.01,
     );
     assert.ok(
       Math.abs(
         v.p[2] -
           pz -
-          Math.cos((heading * Math.PI) / 180) * sign * 66 -
-          Math.sin((heading * Math.PI) / 180) * sign * 14,
+          Math.cos((heading * Math.PI) / 180) * sign * 66,
       ) < 0.01,
     );
     assert.equal(v.done, false);
@@ -101,6 +99,6 @@ await page.click("#again");
 assert.equal(await page.evaluate(() => sim.impact.visible), false);
 assert.deepEqual(errors, []);
 console.log(
-  "PASS: both runways, four camera headings, free flight beyond old boundary, impact and restart; 48 motion frames captured.",
+  "PASS: both runways, four camera headings, free flight within the London region, impact and restart; 48 motion frames captured.",
 );
 await browser.close();

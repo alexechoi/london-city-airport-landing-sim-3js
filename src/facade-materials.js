@@ -63,12 +63,15 @@ export function facadeMaterial(
     s.fragmentShader = s.fragmentShader.replace(
       "#include <color_fragment>",
       `#include <color_fragment>
-      ${modern ? "diffuseColor.rgb=pow(max(diffuseColor.rgb,vec3(.001)),vec3(.55));" : ""}
-      diffuseColor.rgb*=.91+facadeSeed*.18;
+      ${modern ? "diffuseColor.rgb=pow(max(diffuseColor.rgb,vec3(.001)),vec3(.72));" : ""}
+      diffuseColor.rgb*=.84+facadeSeed*.22;
       diffuseColor.rgb*=mix(.79,1.,smoothstep(0.,8.,facadeHeight));
       ${context ? "float grey=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));diffuseColor.rgb=mix(diffuseColor.rgb,vec3(grey)*vec3(.87,.94,1.),smoothstep(35.,60.,facadeTotalHeight));" : ""}
     `,
     );
+    if (modern) s.fragmentShader=s.fragmentShader.replace('#include <metalnessmap_fragment>', `#include <metalnessmap_fragment>
+      roughnessFactor=mix(roughnessFactor,clamp(roughnessFactor,.17,.34),smoothstep(.25,.65,metalnessFactor));
+    `);
   };
   return material;
 }

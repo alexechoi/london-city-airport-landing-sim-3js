@@ -1,7 +1,7 @@
 import { chromium } from "playwright";
 import { mkdir, copyFile, rm, readdir } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
-const duration = 20,
+const duration = 30,
   fps = 24,
   frames = duration * fps;
 if (!process.env.CAPTURE_RESUME)
@@ -58,7 +58,7 @@ await page.evaluate(() => {
 await page.screenshot({path: "public/screenshots/title.png"});
 await page.evaluate(() => {
   sim.start("demo");
-  sim.renderAt(12);
+  sim.renderAt(34);
   document.getElementById("caption").hidden = true;
 });
 await page.screenshot({ path: "public/screenshots/o2.png" });
@@ -74,7 +74,7 @@ if (errors.length) throw new Error(errors.join("\n"));
 for (let i = firstFrame; i < frames; i++) {
   await page.evaluate(
     (t) => sim.renderAt(t),
-    [0, 10, 25, 30][Math.min(3, Math.floor(i / (fps * 5)))] +
+    [0, 8, 16, 24, 32, 43][Math.min(5, Math.floor(i / (fps * 5)))] +
       (i % (fps * 5)) / fps,
   );
   await page.screenshot({
@@ -96,10 +96,13 @@ console.log(
 );
 await browser.close();
 if (errors.length) throw new Error(errors.join("\n"));
-await copyFile("work/frames/00024.jpg", "public/screenshots/skyline.jpg");
-await copyFile("work/frames/00144.jpg", "public/screenshots/o2.jpg");
-await copyFile("work/frames/00264.jpg", "public/screenshots/approach.jpg");
-await copyFile("work/frames/00384.jpg", "public/screenshots/touchdown.jpg");
+await copyFile("work/frames/00024.jpg", "public/screenshots/shard.jpg");
+await copyFile("work/frames/00144.jpg", "public/screenshots/city.jpg");
+await copyFile("work/frames/00264.jpg", "public/screenshots/eye.jpg");
+await copyFile("work/frames/00384.jpg", "public/screenshots/skyline.jpg");
+await copyFile("work/frames/00504.jpg", "public/screenshots/o2.jpg");
+await copyFile("work/frames/00624.jpg", "public/screenshots/approach.jpg");
+await copyFile("work/frames/00704.jpg", "public/screenshots/touchdown.jpg");
 const r = spawnSync(
   "ffmpeg",
   [
@@ -113,7 +116,7 @@ const r = spawnSync(
     "-i",
     "anoisesrc=color=brown:amplitude=0.12:sample_rate=44100",
     "-filter:a",
-    "highpass=f=60,lowpass=f=900,volume=0.35,afade=t=in:d=1,afade=t=out:st=18:d=2",
+    "highpass=f=60,lowpass=f=900,volume=0.35,afade=t=in:d=1,afade=t=out:st=28:d=2",
     "-c:v",
     "libx264",
     "-crf",

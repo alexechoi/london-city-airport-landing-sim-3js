@@ -454,9 +454,12 @@ body.play #location {
     justify-content: space-between;
   }
   #mobile button {
+    font-size: 10px;
+    flex: 1;
+    min-width: 0;
     background: #10232f99;
     border: 1px solid #fff5;
-    padding: 15px;
+    padding: 13px 4px;
     border-radius: 4px;
     touch-action: none;
   }
@@ -783,3 +786,7 @@ body.play #location {
     z-index: 2;
   }
 }
+
+#gate-marker { position:fixed;transform:translate(-50%,-50%);color:#f3cc92;border:1px solid #f3cc9280;background:#10202ed9;padding:8px 12px;font-size:11px;letter-spacing:1px;text-align:center;pointer-events:none; }
+#gate-marker small {display:block;font-size:7px;letter-spacing:1.5px;margin-top:5px;}
+#gate-marker[hidden] {display:none;}

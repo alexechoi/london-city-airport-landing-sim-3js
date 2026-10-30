@@ -107,6 +107,7 @@ addEventListener('error',window.loadingFailed);addEventListener('unhandledreject
         ><button id="restart">RESTART R</button
         ><button id="menu">EXIT ESC</button>
       </div>
+      <div id="gate-marker" hidden>GATE 4<small>PARK NOSE-IN</small></div>
       <div class="crosshair">+<span id="reticle-runway">09</span></div>
       <div class="telemetry left">
         <small>AIRSPEED</small><b id="speed">126</b><span>KNOTS</span
@@ -131,7 +132,7 @@ addEventListener('error',window.loadingFailed);addEventListener('unhandledreject
         ><button data-key="ArrowUp">↑</button
         ><button data-key="ArrowDown">↓</button
         ><button data-key="ArrowRight">→</button
-        ><button data-key=" ">BRAKE</button>
+        ><button data-key="w" aria-label="Increase thrust">+ THR</button><button data-key="s" aria-label="Decrease thrust">− THR</button><button data-key=" ">BRAKE</button>
       </div>
     </section>
     <div id="caption" hidden>

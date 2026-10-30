@@ -6,16 +6,18 @@ const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || "/usr/bin/chromium",
   args: [
     "--no-sandbox",
-    "--use-angle=swiftshader",
+    "--use-gl=angle",
+    "--ignore-gpu-blocklist",
+    "--use-angle=" + (process.env.CAPTURE_ANGLE || "swiftshader"),
     "--enable-unsafe-swiftshader",
   ],
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 page.setDefaultTimeout(180000);
 const errors = [];
-page.on("pageerror", (e) => errors.push(e.message));
+page.on("pageerror", (e) => {errors.push(e.message);console.log("PAGE ERROR",e.message)});
 page.on("console", (m) => {
-  if (m.type() === "error") errors.push(m.text());
+  if (m.type() === "error") {errors.push(m.text());console.log("CONSOLE ERROR",m.text())}
 });
 let unblock;
 const gate = new Promise((resolve) => (unblock = resolve));
@@ -48,10 +50,9 @@ for (const approach of ["09", "27"]) {
   await page.evaluate(() => {
     for (let i = 0; i < 650; i++) sim.advance(1 / 60, { " ": true });
   });
-  assert.equal(
-    await page.locator("#result-title").textContent(),
-    "Welcome to London.",
-  );
+  assert.equal(await page.evaluate(()=>sim.flight.done),false);
+  await page.evaluate(a=>{sim.setFlight({x:a==='09'?171:-171,z:a==='09'?-84:-1424,heading:a==='09'?90:-90,speed:0});sim.advance(0);},approach);
+  assert.equal(await page.locator("#result-title").textContent(),"Parked at gate 4.");
   assert.equal(await page.locator("#result").isVisible(), true);
 }
 await page.evaluate(() => {
