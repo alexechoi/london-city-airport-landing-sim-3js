@@ -58,11 +58,13 @@ Netlify uses `netlify.toml`: `npm run build`, publish `dist`. No server, paid ma
 
 - [Revised 30-second flythrough](public/flythrough.mp4)
 - [Title screen](public/screenshots/title.png)
-- [Final approach screenshot](public/screenshots/approach.jpg)
+- [Shard bank](public/screenshots/shard.jpg) · [City turn](public/screenshots/city.jpg) · [London Eye](public/screenshots/eye.jpg)
+- [Final approach screenshot](public/screenshots/approach.jpg) · [Airfield](public/screenshots/airfield.png)
+- [City Hall / the Crystal](public/screenshots/city-hall.png) · [Newham Dockside council offices](public/screenshots/newham-dockside.png)
 
 Media links show this branch’s assets; production may run an earlier revision.
 
-The revised video is rendered from the actual Three.js scene at 1280×720, 24 fps, H.264/AAC.
+The revised video is rendered from the actual Three.js scene at 1280×720, 24 fps, H.264/AAC. With a local server running, `SITE_URL=http://localhost:5173 node scripts/review-landmarks.mjs` refreshes the fixed review screenshots and checks a portrait resize.
 
 [One Canada Square close-up](public/screenshots/one-canada-square.png) · [Revised skyline](public/screenshots/skyline.jpg)
 

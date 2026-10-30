@@ -23,6 +23,7 @@ for(const [site,name,offset] of [['dockside','newham-dockside',[-100,60,-160]],[
 await page.evaluate(()=>sim.inspect([-160,65,-1830],[-60,1,-1150]));
 await page.screenshot({path:'public/screenshots/airfield.png'});
 await page.setViewportSize({width:390,height:844});
+await page.waitForFunction(()=>innerWidth===390&&document.getElementById('world').width===Math.floor(390*Math.min(devicePixelRatio,1.7)));
 await page.evaluate(()=>{sim.start('fly');sim.advance(0);});
 await page.screenshot({path:'work/screenshots/latest-mobile.png'});
 await browser.close();
