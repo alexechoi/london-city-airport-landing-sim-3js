@@ -508,7 +508,7 @@ const vegetationCount = await addVegetation(
   [...mapData.roads,...contextData.roads],
   parkData,
 );
-const streetStats = addStreetDetails(scene, mapData.roads, waterData);
+const streetStats = addStreetDetails(scene, [...mapData.roads, ...contextData.roads], waterData);
 const impact = new Impact(scene);
 addLandmarkDetails(scene, mapData);
 // Crown shares the tower's bounds and sits directly on its 205 m roof.

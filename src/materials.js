@@ -1,4 +1,5 @@
 import * as T from "three";
+import landcoverBounds from "./landcover-bounds.json" with { type: "json" };
 import { curtainWallMaterial } from "./curtain-wall.js";
 import { facadeMaterial } from "./facade-materials.js";
 // WebGL implementation of the material techniques in Slop New York's tsl-materials.js.
@@ -213,12 +214,13 @@ export function surfaceMaterial(kind = "paving", landcover = null) {
     ${
       terrain && landcover
         ? `vec2 en=vec2(p.y*.998806+p.x*.04885,p.x*.998806-p.y*.04885);
-    vec2 geoUV=vec2((.06602+en.x/69298.+.05)/.16,(51.50494+en.y/111320.-51.48)/.05);
-    float vegetation=texture2D(landcover,clamp(geoUV,vec2(.001),vec2(.999))).r;
+    vec2 geoUV=vec2((.06602+en.x/69298.-(${landcoverBounds.west}))/${landcoverBounds.east-landcoverBounds.west},(51.50494+en.y/111320.-${landcoverBounds.south})/${landcoverBounds.north-landcoverBounds.south});
+    vec2 cover=texture2D(landcover,clamp(geoUV,vec2(.001),vec2(.999))).rg;
+    float vegetation=cover.r;
     float inMap=step(0.,geoUV.x)*step(geoUV.x,1.)*step(0.,geoUV.y)*step(geoUV.y,1.);
     vegetation=mix(.02,vegetation,inMap);
-    vec3 grassPhoto=texture2D(grassSurface,p/6.).rgb;vec3 garden=vec3(.10,.155,.043)*(.65+dot(grassPhoto,vec3(.2126,.7152,.0722))*1.8)*mix(.8,1.05,broad);
-    vec3 urbanPhoto=texture2D(urbanSurface,p/7.).rgb;base=mix(urbanPhoto*1.2,garden,vegetation);`
+    vec3 grassPhoto=texture2D(grassSurface,p/6.).rgb;vec3 garden=vec3(.075,.11,.055)*(.65+dot(grassPhoto,vec3(.2126,.7152,.0722))*1.8)*mix(.8,1.05,broad);
+    vec3 urbanPhoto=texture2D(urbanSurface,p/3.).rgb;base=mix(urbanPhoto*.75*(.65+cover.g*.8),garden,vegetation);`
         : ""
     }
 ${roof ? `float roofType=hashCity(vec2(vRoofSeed,17.));
@@ -232,7 +234,7 @@ base=mix(flatRoof,base,vRoofSlope);` : ""}
 ${floorPhoto ? `vec3 photographed=texture2D(floorPhoto,p/${kind === "road" ? "5." : "4."}).rgb;base=mix(base,photographed*${kind === "roof" ? ".72" : ".8"},${kind === "road" ? ".5" : kind === "roof" ? ".75*vRoofSlope" : ".75"});` : ""}
     base*=mix(.97,1.03,fine)*(1.-damp*${roof ? ".015" : ".08"});
     ${road ? `float lineWidth=max(fwidth(vRoadUV.y),.001);float centre=clamp((.11-abs(vRoadUV.y))/lineWidth+.5,0.,1.)*min(1.,.11/lineWidth);float dash=pulse(fract(vRoadUV.x/9.),0.,.33,fwidth(vRoadUV.x/9.));base=mix(base,vec3(.62,.60,.52),centre*dash*vRoadUV.z*.75);` : ""}
-${kind === "park" ? `base=mix(vec3(.07,.12,.035),vec3(.14,.20,.075),medium*.5+broad*.5);base*=.8+.5*dot(photographed,vec3(.333));` : ""}
+${kind === "park" ? `base=mix(vec3(.055,.08,.035),vec3(.12,.16,.065),medium*.5+broad*.5);base*=.8+.5*dot(photographed,vec3(.333));` : ""}
     diffuseColor.rgb*=base;
     `,
     );

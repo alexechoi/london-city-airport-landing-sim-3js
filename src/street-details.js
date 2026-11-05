@@ -13,7 +13,7 @@ export function addStreetDetails(scene, roads, water) {
   const traffic = [], animated = [], graph = new Map();
   const nodeKey = p => Math.round(p[0]/2)+","+Math.round(p[1]/2);
   for (const [kind,p] of roads) {
-    if (!/^(primary|secondary|tertiary|residential|trunk|unclassified)$/.test(kind)) continue;
+    if (!/^(primary|secondary|tertiary|residential|minor|trunk|unclassified)$/.test(kind)) continue;
     for(let i=1;i<p.length;i++) {
       const a=p[i-1],b=p[i],len=Math.hypot(b[0]-a[0],b[1]-a[1]);
       if(len<1)continue;
@@ -31,12 +31,12 @@ export function addStreetDetails(scene, roads, water) {
     list.push({ x, y, z, w, h, l, angle, color, vehicle,
       localX: vehicle ? Math.cos(angle)*(x-vehicle.x)-Math.sin(angle)*(z-vehicle.z):0,
       localZ: vehicle ? Math.sin(angle)*(x-vehicle.x)+Math.cos(angle)*(z-vehicle.z):0 });
-  const near = (x, z) => Math.abs(x) < 1900 && z > -7350 && z < 100;
+  const near = (x, z) => Math.abs(x) < 2800 && z > -13000 && z < 100;
   let seed = 81713;
   const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
   for (const [kind, p] of roads) {
     if (
-      !/^(primary|secondary|tertiary|residential|trunk|unclassified)$/.test(
+      !/^(primary|secondary|tertiary|residential|minor|trunk|unclassified)$/.test(
         kind,
       )
     )
@@ -222,6 +222,7 @@ export function addStreetDetails(scene, roads, water) {
       }
     },
     sample: () => traffic.slice(0,3).map(v=>[v.x,v.z]),
+    sampleWest: () => traffic.filter(v=>v.z < -7350).slice(0,3).map(v=>[v.x,v.z]),
     vehicles: bodies.length,
     lamps: lamps.length,
     quaySegments: walls.length,

@@ -32,6 +32,9 @@ assert.equal(await p.locator('#result-title').textContent(),'Flight area exited.
 await p.click('#again');assert.equal(await p.evaluate(()=>sim.flight.done),false);
 const traffic=await p.evaluate(()=>{const a=sim.streetStats.sample();sim.advance(2);return [a,sim.streetStats.sample()];});
 assert.ok(traffic[0].some((a,i)=>Math.hypot(a[0]-traffic[1][i][0],a[1]-traffic[1][i][1])>5));
+const west=await p.evaluate(()=>{const a=sim.streetStats.sampleWest();sim.advance(2);return [a,sim.streetStats.sampleWest()];});
+assert.ok(west[0].length>0, "western districts contain traffic");
+assert.ok(west[0].some((a,i)=>Math.hypot(a[0]-west[1][i][0],a[1]-west[1][i][1])>5), "western traffic moves");
 assert.deepEqual(errors,[]);
 console.log('PASS: centered/offset cameras, both landings continue to taxi, gate parking, fogged boundary end/retry, moving road traffic.');
 await browser.close();

@@ -1,4 +1,5 @@
 import * as T from "three";
+import bounds from "./landcover-bounds.json" with { type: "json" };
 function inside(x, z, p) {
   let hit = false;
   for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
@@ -84,8 +85,8 @@ export async function addVegetation(
         pz = z + rnd() * 16;
       const e = pz * 0.998806 + px * 0.04885,
         n = px * 0.998806 - pz * 0.04885,
-        u = (0.06602 + e / 69298 + 0.05) / 0.16,
-        v = (51.53 - (51.50494 + n / 111320)) / 0.05;
+        u = (0.06602 + e / 69298 - bounds.west) / (bounds.east-bounds.west),
+        v = (bounds.north - (51.50494 + n / 111320)) / (bounds.north-bounds.south);
       const inRaster=u>=0&&u<1&&v>=0&&v<1;
       const cover = inRaster ? pixels[
           (Math.floor(v * canvas.height) * canvas.width +
