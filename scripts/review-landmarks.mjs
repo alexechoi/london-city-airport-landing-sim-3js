@@ -15,6 +15,12 @@ for(const [name,time] of [['shard',2],['city',10],['eye',18],['skyline',26],['o2
   await page.screenshot({path:`public/screenshots/${name}.jpg`,type:'jpeg',quality:95});
   console.log('Reviewed',name);
 }
+await page.evaluate(()=>{sim.renderAt(34);document.getElementById('caption').hidden=true;});
+await page.screenshot({path:'public/screenshots/o2.png'});
+await page.evaluate(()=>{const [x,y,z]=sim.landmark.position;sim.inspect([x-290,y+50,z-240],[x,150,z]);});
+await page.screenshot({path:'public/screenshots/one-canada-square.png'});
+await page.evaluate(()=>{const [x,y,z]=sim.landmarks.gherkin.position;sim.inspect([x-160,155,z+160],[x,90,z]);});
+await page.screenshot({path:'public/screenshots/gherkin.jpg',type:'jpeg',quality:95});
 for(const [site,name,offset] of [['dockside','newham-dockside',[-100,60,-160]],['crystal','city-hall',[95,60,-105]]]){
   await page.evaluate(({site,offset})=>{document.getElementById('caption').hidden=true;const [x,y,z]=sim.landmarks[site].position;sim.inspect([x+offset[0],offset[1],z+offset[2]],[x,9,z]);},{site,offset});
   await page.screenshot({path:`public/screenshots/${name}.png`});
@@ -22,6 +28,8 @@ for(const [site,name,offset] of [['dockside','newham-dockside',[-100,60,-160]],[
 }
 await page.evaluate(()=>sim.inspect([-160,65,-1830],[-60,1,-1150]));
 await page.screenshot({path:'public/screenshots/airfield.png'});
+await page.evaluate(()=>sim.inspect([1700,110,-8850],[1600,5,-8550]));
+await page.screenshot({path:'public/screenshots/residential.jpg',type:'jpeg',quality:95});
 await page.setViewportSize({width:390,height:844});
 await page.waitForFunction(()=>innerWidth===390&&document.getElementById('world').width===Math.floor(390*Math.min(devicePixelRatio,1.7)));
 await page.evaluate(()=>{sim.start('fly');sim.advance(0);});

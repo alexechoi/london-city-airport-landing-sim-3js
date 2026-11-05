@@ -56,15 +56,16 @@ Netlify uses `netlify.toml`: `npm run build`, publish `dist`. No server, paid ma
 
 ## Demo media
 
-- [Revised 30-second flythrough](public/flythrough.mp4)
+- [Latest City and Canary Wharf banked flythrough — 10 seconds](public/district-flythrough.mp4)
+- [Full 30-second flythrough — previous material revision](public/flythrough.mp4)
 - [Title screen](public/screenshots/title.png)
-- [Shard bank](public/screenshots/shard.jpg) · [City turn](public/screenshots/city.jpg) · [London Eye](public/screenshots/eye.jpg)
+- [Shard bank](public/screenshots/shard.jpg) · [City turn](public/screenshots/city.jpg) · [Gherkin detail](public/screenshots/gherkin.jpg) · [London Eye](public/screenshots/eye.jpg)
 - [Final approach screenshot](public/screenshots/approach.jpg) · [Airfield](public/screenshots/airfield.png)
 - [City Hall / the Crystal](public/screenshots/city-hall.png) · [Newham Dockside council offices](public/screenshots/newham-dockside.png)
 
 Media links show this branch’s assets; production may run an earlier revision.
 
-The revised video is rendered from the actual Three.js scene at 1280×720, 24 fps, H.264/AAC. With a local server running, `SITE_URL=http://localhost:5173 node scripts/review-landmarks.mjs` refreshes the fixed review screenshots and checks a portrait resize.
+The videos are rendered from the actual Three.js scene at 1280×720 and 24 fps. The latest district clip is H.264; the full tour also has AAC audio. `node scripts/capture-districts.mjs` records the latest 10-second City/Canary Wharf clip. With a local server running, `SITE_URL=http://localhost:5173 node scripts/review-landmarks.mjs` refreshes the fixed review screenshots and checks a portrait resize.
 
 [One Canada Square close-up](public/screenshots/one-canada-square.png) · [Revised skyline](public/screenshots/skyline.jpg)
 
@@ -78,7 +79,7 @@ Revision evidence: [chase view](public/screenshots/chase.jpg), [building impact]
 
 ## Architecture and materials
 
-The city uses six authored PBR facade families with recessed frames, blinds, brick and curtain-wall details. Per-building seeds vary tint, window bay widths, storey heights and texture offsets. Curtain walls reflect a static Canary Wharf city probe. Surrounding districts retain brick, stone, industrial and glass material families, including during custom flights. Normal, roughness, metalness and occlusion maps share metric UVs; mipmaps and anisotropic filtering reduce distant shimmer. Landmark shaders retain filtered geometric patterns. Residential footprints receive pitched roofs where their shape supports them. Tall buildings have roof parapets, corner trim, mechanical penthouses, louvred plant screens and fan units. Flat roofs vary between gravel and darker membrane finishes. Bespoke glass landmarks use fine curtain-wall mullions and district reflections, with continuous curved glazing and spiral bands on the Gherkin. Tree groups extend along mapped park boundaries west of the aerial vegetation mask. One Canada Square’s 205 m body and 30 m pyramid share the same OSM footprint.
+The city combines photographed brick, authored PBR masonry facades and metric curtain-wall shaders. Glass towers have individually shaded panes, restrained panel distortion, metal frames, spandrels and blinds; building seeds vary the design and neutral glazing tint. Per-building seeds vary tint, window bay widths, storey heights and texture offsets. Curtain walls reflect a static Canary Wharf city probe. Surrounding districts retain brick, stone, industrial and glass material families, including during custom flights. Normal, roughness, metalness and occlusion maps share metric UVs; mipmaps and anisotropic filtering reduce distant shimmer. Landmark shaders retain filtered geometric patterns. Residential footprints receive pitched roofs where their shape supports them, including longer terraces. The context map preserves 17,786 more individual outlines than the previous compacted version. Window bays fit complete modules between wall corners. Tall buildings have roof parapets, corner trim, mechanical penthouses, louvred plant screens and fan units. Flat roofs vary between gravel and darker membrane finishes. Bespoke glass landmarks use fine curtain-wall mullions and district reflections, with continuous curved glazing and spiral bands on the Gherkin. The aerial vegetation mask covers the full flight area, guiding courtyard greenery and trees across both eastern and western districts. One Canada Square’s 205 m body and 30 m pyramid share the same OSM footprint.
 
 Ground surfaces use separate asphalt, paving, roof and vegetation materials, with world-space wear and filtered joints. Land cover is derived from the attributed aerial reference. Tree placement excludes mapped water, roads and building bounds. The loading overlay remains visible until the aircraft, scenery, textures and first rendered frames are ready; failed loads offer retry.
 
@@ -91,6 +92,6 @@ For Linux machines with Mesa, the capture script also supports `CAPTURE_ANGLE=gl
 
 ## Landmark and airport revision
 
-The Shard, Gherkin, Leadenhall Building, Walkie-Talkie, 22 Bishopsgate, Heron Tower, London Eye, City Hall / the Crystal, and Newham Dockside use dedicated forms and facade treatments. The Eye has 32 upright moving capsules and a rotating wheel. Airfield surfaces use metre-scale photographed asphalt, concrete and grass textures, normal and roughness maps, concrete slab joints and touchdown rubber wear. Road vehicles move through the connected road network.
+The Shard, Gherkin, Leadenhall Building, Walkie-Talkie, 22 Bishopsgate, Heron Tower, London Eye, City Hall / the Crystal, and Newham Dockside use dedicated forms and facade treatments. The Eye has 32 upright moving capsules and a rotating wheel. Airfield surfaces use metre-scale photographed asphalt, concrete and grass textures, normal and roughness maps, concrete slab joints and touchdown rubber wear. Road vehicles move through the connected road network, including the City and western districts.
 
 `node scripts/check-new-features.mjs` verifies the camera choices, landing-to-taxi flow on both runways, gate completion, boundary fog/session ending, retry and moving traffic. Unit tests cover taxi physics, parking conditions, the mapped boundary and preservation of facade data when geometry is batched.
