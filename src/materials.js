@@ -1,4 +1,5 @@
 import * as T from "three";
+import { curtainWallMaterial } from "./curtain-wall.js";
 import { facadeMaterial } from "./facade-materials.js";
 // WebGL implementation of the material techniques in Slop New York's tsl-materials.js.
 // The box-filtered pulse is adapted from that MIT-licensed source; see vendor/slop-new-york/LICENSE.
@@ -37,14 +38,10 @@ export function createCityMaterials() {
     [0xadbfc5, 0x3e7e91, true],
   ];
   return styles.map(([wall, glass, modern], idx) => {
+    if ([0, 5, 6].includes(idx)) return curtainWallMaterial(idx === 5 ? 1 : idx === 6 ? 2 : 0);
     const facades = {
-      0: ["Facade001", { modern: true }],
       1: ["Facade018A", { tint: 0xe4dfd5 }],
-      2: ["Facade020A", {}],
-      3: ["Facade018A", {}],
       4: ["Facade019A", { tint: 0xe0e1dd }],
-      5: ["Facade005", { modern: true }],
-      6: ["Facade006", { modern: true, tint: 0x7e8d94 }],
       8: ["Facade018A", { context: true }],
       10: ["Facade001", { modern: true, tint: 0xc0e2ea }],
     };
@@ -91,7 +88,7 @@ export function createCityMaterials() {
       float detail=1.-smoothstep(.22,1.,max(fw.x,fw.y));
       float room=mix(.5,hashCity(floor(grid)+vec2(identity,identity*.37)),detail);
       float modern=${idx === 8 ? "step(40.,vBuilding.w)" : modern ? "1." : "0."};
-      float wx=${idx === 9 ? "mix(.075,.055,step(185.,vMetric.y))" : "mix(.23,.035,modern)"},wy=${idx === 9 ? "mix(.12,.10,step(185.,vMetric.y))" : "mix(.23,.20,modern)"};
+      float wx=${idx === 9 ? "mix(.11,.075,step(185.,vMetric.y))" : "mix(.23,.035,modern)"},wy=${idx === 9 ? "mix(.18,.12,step(185.,vMetric.y))" : "mix(.23,.20,modern)"};
       float opening=pulse(cell.x,wx,1.-wx,fw.x)*pulse(cell.y,wy,.93,fw.y);
       ${idx === 7 ? `opening*=smoothstep(vBuilding.w-3.5,vBuilding.w-2.8,vMetric.y);` : ""}
       ${idx === 9 ? `opening*=1.-smoothstep(200.,201.,vMetric.y);opening*=1.-(smoothstep(173.,173.4,vMetric.y)*(1.-smoothstep(175.5,176.,vMetric.y)));` : ""}
@@ -126,6 +123,7 @@ export function createCityMaterials() {
       interior=mix(interior,vec3(.34,.31,.25),blind*.65);
       vec3 glazing=mix(interior,glassTint,.4);
       glazing=mix(glazing,skyColour,.30+fres*.45)*mix(.87,1.08,room);
+      ${idx === 9 ? "glazing*=.63;" : ""}
       vec3 facade=mix(wallBase,vec3(.23,.24,.23),reveal);
       facade=mix(facade,glazing,opening);
       facade=mix(facade,wallTint*.7,frame*.5);

@@ -6,7 +6,7 @@ export function addContextCity(scene, data, materials, roof) {
   // industrial identities when a custom flight leaves the central district.
   materials = materials.map((m, i) =>
     [0, 5, 6, 10].includes(i) ? materials[i===10?0:i]
-      : i === 2 ? materials[2]
+      : [2, 3].includes(i) ? materials[i]
       : i === 4 ? materials[4]
       : i === 7 ? materials[7]
       : materials[8],

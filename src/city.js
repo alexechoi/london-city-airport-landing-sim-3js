@@ -97,9 +97,9 @@ export function addCity(scene, data, materials, roofMaterial, seedOffset = 0) {
           }, 0),
         ) / 2;
       if (
-        area / ((u1 - u0) * (v1 - v0)) > 0.78 &&
+        area / ((u1 - u0) * (v1 - v0)) > 0.94 &&
         v1 - v0 < 20 &&
-        u1 - u0 < 40
+        u1 - u0 < 100
       ) {
         roofRise = Math.min(3.2, (v1 - v0) * 0.36);
         roofFrame = { cs, sn, u0, u1, v0, v1 };
@@ -116,6 +116,13 @@ export function addCity(scene, data, materials, roofMaterial, seedOffset = 0) {
         dz = c[1] - a[1],
         length = Math.hypot(dx, dz);
       if (length < 0.05) continue;
+      // Fit complete bays between the corners; fractional windows at every
+      // edge made even accurate footprints look like texture-wrapped boxes.
+      if (!(seedOffset === 0 && [10, 11].includes(index))) {
+        const nominalBay = height > 45 ? 1.7 + rnd * .8 : 2.5 + rnd * .7;
+        parameters[1] = length / Math.max(1, Math.round(length / nominalBay));
+        parameters[2] = h / Math.max(1, Math.round(h / (height > 45 ? 3.6 + rnd * .3 : 3.05)));
+      }
       const normal = [-dz / length, 0, dx / length],
         v0 = [a[0], 0, a[1]],
         v1 = [c[0], 0, c[1]],
