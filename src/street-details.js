@@ -211,13 +211,23 @@ export function addStreetDetails(scene, roads, water) {
         v.x=e.a[0]+dx*v.t-dz*e.w*.48;
         v.z=e.a[1]+dz*v.t+dx*e.w*.48;
         v.angle=Math.atan2(dx,dz);
+        v.cos=Math.cos(v.angle);v.sin=Math.sin(v.angle);
       }
       for(const {mesh,items} of animated) {
-        items.forEach((part,i)=>{
-          const v=part.vehicle;if(!v)return;
-          d.position.set(v.x+Math.cos(v.angle)*part.localX+Math.sin(v.angle)*part.localZ,part.y,v.z-Math.sin(v.angle)*part.localX+Math.cos(v.angle)*part.localZ);
-          d.rotation.set(0,v.angle,0);d.scale.set(part.w,part.h,part.l);d.updateMatrix();mesh.setMatrixAt(i,d.matrix);
-        });
+        // Vehicles rotate only about Y. Reuse each vehicle's basis for its
+        // body, windows, wheels and contact shadow instead of recomposing tens
+        // of thousands of Object3D/quaternion transforms every animation frame.
+        const matrices=mesh.instanceMatrix.array;
+        for(let i=0;i<items.length;i++) {
+          const part=items[i],v=part.vehicle;if(!v)continue;
+          const c=v.cos,s=v.sin,offset=i*16;
+          matrices[offset]=c*part.w;
+          matrices[offset+2]=-s*part.w;
+          matrices[offset+8]=s*part.l;
+          matrices[offset+10]=c*part.l;
+          matrices[offset+12]=v.x+c*part.localX+s*part.localZ;
+          matrices[offset+14]=v.z-s*part.localX+c*part.localZ;
+        }
         mesh.instanceMatrix.needsUpdate=true;
       }
     },
