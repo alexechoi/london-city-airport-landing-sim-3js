@@ -101,9 +101,10 @@ export function buildLondonLandmarks(scene,environment) {
   // The Gherkin: curved profile, triangulated glazing and six dark spirals.
   site("gherkin",180,32);
   const profile=[[0,22],[12,28],[40,32],[75,31],[110,27],[140,20],[164,11],[180,.6]];
-  function radius(y) {let i=1;while(i<profile.length-1&&profile[i][0]<y)i++;const a=profile[i-1],b=profile[i];return T.MathUtils.lerp(a[1],b[1],(y-a[0])/(b[0]-a[0]));}
   const curvedProfile=new T.SplineCurve(profile.map(([y,r])=>new T.Vector2(r,y))).getPoints(100);
-  const gherkinGlass=rawGlass.clone();gherkinGlass.color.set(0x9ab2bc);gherkinGlass.roughness=.26;
+  const gherkinGlass=rawGlass.clone();gherkinGlass.color.set(0x91aaa7).multiplyScalar(.42);gherkinGlass.roughness=.23;
+  gherkinGlass.userData.reflectiveFacade=true;cityMaterials.push(gherkinGlass);
+  gherkinGlass.customProgramCacheKey=()=>"gherkin-diagrid-v2";
   const gherkinOrigin=origin.clone();
   gherkinGlass.onBeforeCompile=s=>{
     s.uniforms.gherkinOrigin={value:gherkinOrigin};
@@ -112,15 +113,25 @@ export function buildLondonLandmarks(scene,environment) {
     s.fragmentShader='varying vec3 vGherkin;\n'+s.fragmentShader;
     s.fragmentShader=s.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
       float theta=atan(vGherkin.z,vGherkin.x)/6.2831853;
-      float spiral=fract(theta*6.-vGherkin.y*.009);
-      float aa=max(fwidth(spiral),.004);
-      float stripe=smoothstep(.10,.10+aa,spiral)*(1.-smoothstep(.29,.29+aa,spiral));
-      diffuseColor.rgb*=mix(1.,.30,stripe);
-      vec2 diagonal=vec2(theta*36.+vGherkin.y/9.,theta*36.-vGherkin.y/9.);
+      // The six broad ventilation spirals and the primary steel diagrid have
+      // different scales. The old fine grid vanished before the tower's silhouette.
+      float spiral=fract(theta*6.-vGherkin.y*.0175);
+      float aa=max(fwidth(theta*6.-vGherkin.y*.0175),.004);
+      float stripe=smoothstep(.08,.08+aa,spiral)*(1.-smoothstep(.40,.40+aa,spiral));
+      diffuseColor.rgb*=mix(1.,.34,stripe);
+      vec2 diagonal=vec2(theta*18.+vGherkin.y/18.,theta*18.-vGherkin.y/18.);
       vec2 distance=abs(fract(diagonal+.5)-.5);
       vec2 width=max(fwidth(diagonal),vec2(.001));
-      vec2 frame=(1.-smoothstep(vec2(.04),vec2(.04)+width,distance))*min(vec2(1.),vec2(.08)/width);
-      diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.08,.10,.12),max(frame.x,frame.y)*.9);
+      vec2 frame=(1.-smoothstep(vec2(.018),vec2(.018)+width,distance))*min(vec2(1.),vec2(.036)/width);
+      vec2 secondary=diagonal*2.;
+      vec2 secondaryWidth=max(fwidth(secondary),vec2(.001));
+      vec2 secondaryEdge=abs(fract(secondary+.5)-.5);
+      vec2 fineFrame=(1.-smoothstep(vec2(.012),vec2(.012)+secondaryWidth,secondaryEdge))*min(vec2(1.),vec2(.024)/secondaryWidth);
+      diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.028,.035,.037),max(fineFrame.x,fineFrame.y)*.7);
+      diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.27,.30,.29),max(frame.x,frame.y));
+      float floorEdge=abs(fract(vGherkin.y/4.5+.5)-.5),floorAA=max(fwidth(vGherkin.y/4.5),.001);
+      float floorLine=(1.-smoothstep(.012,.012+floorAA,floorEdge))*min(1.,.024/floorAA);
+      diffuseColor.rgb*=1.-floorLine*.3;
     `);
   };
   add(new T.LatheGeometry(curvedProfile,96),gherkinGlass);
